@@ -2,9 +2,9 @@
 
 ## Local setup
 
-Definitely going to regret this 2 years later when I'm no longer on nix...
+Development environment bundled by Nix: https://nix.dev/install-nix.html
 
-    nix-shell -p ghc
+    nix develop
 
 ## Commands
 
