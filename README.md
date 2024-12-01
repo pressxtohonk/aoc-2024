@@ -1,21 +1,32 @@
 # 🎄 AOC 2024 🌟
 
-## Local setup
+## Environment
 
-Development environment bundled by Nix: https://nix.dev/install-nix.html
+Development environment bundled by Nix flakes: https://nix.dev/install-nix.html
 
     nix develop
 
-## Commands
+## Development
 
-Compiling a binary
+This project uses cabal to build and run executables. Build targets are configured in `aoc2024.cabal`.
 
-    ghc Day01
+For example, to configure a target `example` with source directory `src/` and entrypoint `src/Example.hs`:
 
-Running test case
+    executable example
+        hs-source-dirs:       src
+        main-is:              Example.hs
+        build-depends:        base
 
-    ghc Day01 && ./Day01 1 "tests/1.1.in" | diff "tests/1.1.out" -
+ The executable is then built and run with:
 
-Solving puzzle input
+    cabal run example
 
-    ghc Day01 && ./Day01 1 "input/1.1.in"
+## Examples
+
+Running test cases:
+
+    cabal run day01 1 "resources/tests/1.1.in" | diff "resources/tests/1.1.out" -
+
+Solving puzzle input:
+
+    cabal run day01 1 "resources/input/1.1.in"

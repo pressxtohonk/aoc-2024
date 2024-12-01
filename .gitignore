@@ -1,5 +1,2 @@
+dist-newstyle/
 input/
-Day*
-!*.hs
-*.hi
-*.o

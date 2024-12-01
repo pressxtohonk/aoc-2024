@@ -1,0 +1,188 @@
+cabal-version:      3.0
+
+name:               aoc2024
+version:            0.1.0.0
+
+executable example
+    hs-source-dirs:       src
+    main-is:              Example.hs
+    other-modules:        PressXToParse, PressXToSolve
+    build-depends:        base
+                        , parsec
+
+executable day01
+    hs-source-dirs:       src
+    main-is:              Day01.hs
+    other-modules:        PressXToParse, PressXToSolve
+    default-extensions:   TupleSections
+    build-depends:        base
+                        , containers
+                        , parsec
+
+executable day02
+    hs-source-dirs:       src
+    main-is:              Day02.hs
+    other-modules:        PressXToParse, PressXToSolve
+    build-depends:        base
+                        , parsec
+
+executable day03
+    hs-source-dirs:       src
+    main-is:              Day03.hs
+    other-modules:        PressXToParse, PressXToSolve
+    build-depends:        base
+                        , parsec
+
+executable day04
+    hs-source-dirs:       src
+    main-is:              Day04.hs
+    other-modules:        PressXToParse, PressXToSolve
+    build-depends:        base
+                        , parsec
+
+executable day05
+    hs-source-dirs:       src
+    main-is:              Day05.hs
+    other-modules:        PressXToParse, PressXToSolve
+    build-depends:        base
+                        , parsec
+
+executable day06
+    hs-source-dirs:       src
+    main-is:              Day06.hs
+    other-modules:        PressXToParse, PressXToSolve
+    build-depends:        base
+                        , parsec
+
+executable day07
+    hs-source-dirs:       src
+    main-is:              Day07.hs
+    other-modules:        PressXToParse, PressXToSolve
+    build-depends:        base
+                        , parsec
+
+executable day08
+    hs-source-dirs:       src
+    main-is:              Day08.hs
+    other-modules:        PressXToParse, PressXToSolve
+    build-depends:        base
+                        , parsec
+
+executable day09
+    hs-source-dirs:       src
+    main-is:              Day09.hs
+    other-modules:        PressXToParse, PressXToSolve
+    build-depends:        base
+                        , parsec
+
+executable day10
+    hs-source-dirs:       src
+    main-is:              Day10.hs
+    other-modules:        PressXToParse, PressXToSolve
+    build-depends:        base
+                        , parsec
+
+executable day11
+    hs-source-dirs:       src
+    main-is:              Day11.hs
+    other-modules:        PressXToParse, PressXToSolve
+    build-depends:        base
+                        , parsec
+
+executable day12
+    hs-source-dirs:       src
+    main-is:              Day12.hs
+    other-modules:        PressXToParse, PressXToSolve
+    build-depends:        base
+                        , parsec
+
+executable day13
+    hs-source-dirs:       src
+    main-is:              Day13.hs
+    other-modules:        PressXToParse, PressXToSolve
+    build-depends:        base
+                        , parsec
+
+executable day14
+    hs-source-dirs:       src
+    main-is:              Day14.hs
+    other-modules:        PressXToParse, PressXToSolve
+    build-depends:        base
+                        , parsec
+
+executable day15
+    hs-source-dirs:       src
+    main-is:              Day15.hs
+    other-modules:        PressXToParse, PressXToSolve
+    build-depends:        base
+                        , parsec
+
+executable day16
+    hs-source-dirs:       src
+    main-is:              Day16.hs
+    other-modules:        PressXToParse, PressXToSolve
+    build-depends:        base
+                        , parsec
+
+executable day17
+    hs-source-dirs:       src
+    main-is:              Day17.hs
+    other-modules:        PressXToParse, PressXToSolve
+    build-depends:        base
+                        , parsec
+
+executable day18
+    hs-source-dirs:       src
+    main-is:              Day18.hs
+    other-modules:        PressXToParse, PressXToSolve
+    build-depends:        base
+                        , parsec
+
+executable day19
+    hs-source-dirs:       src
+    main-is:              Day19.hs
+    other-modules:        PressXToParse, PressXToSolve
+    build-depends:        base
+                        , parsec
+
+executable day20
+    hs-source-dirs:       src
+    main-is:              Day20.hs
+    other-modules:        PressXToParse, PressXToSolve
+    build-depends:        base
+                        , parsec
+
+executable day21
+    hs-source-dirs:       src
+    main-is:              Day21.hs
+    other-modules:        PressXToParse, PressXToSolve
+    build-depends:        base
+                        , parsec
+
+executable day22
+    hs-source-dirs:       src
+    main-is:              Day22.hs
+    other-modules:        PressXToParse, PressXToSolve
+    build-depends:        base
+                        , parsec
+
+executable day23
+    hs-source-dirs:       src
+    main-is:              Day23.hs
+    other-modules:        PressXToParse, PressXToSolve
+    build-depends:        base
+                        , parsec
+
+executable day24
+    hs-source-dirs:       src
+    main-is:              Day24.hs
+    other-modules:        PressXToParse, PressXToSolve
+    build-depends:        base
+                        , parsec
+
+executable day25
+    hs-source-dirs:       src
+    main-is:              Day25.hs
+    other-modules:        PressXToParse, PressXToSolve
+    build-depends:        base
+                        , parsec
