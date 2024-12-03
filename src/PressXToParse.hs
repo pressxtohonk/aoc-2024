@@ -47,6 +47,9 @@ nonEmpty parser = do
 linesOf :: Parser a -> Parser [a]
 linesOf item = item `endBy1` end
 
+anyOf :: [Parser a] -> Parser a
+anyOf = choice . map try
+
 pair :: Parser a -> Parser (Pair a)
 pair item = do
   a <- item
