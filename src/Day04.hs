@@ -7,22 +7,20 @@ import PressXToGrids (Grid)
 import qualified PressXToGrids as Grid
 import Data.List (transpose, isPrefixOf, tails)
 
--- Each function reads 
-transforms :: [[String] -> [String]]
-transforms =
-  [ id                         -- left to right
-  , transpose                  -- top to bottom
-  , transpose . reverse        -- bottom to top
-  , fmap reverse               -- right to left
-  , skew                       -- top right to bottom left
-  , skew . transpose           -- bottom left to top right
-  , skew . transpose . reverse -- bottom right to top left
-  , skew . reverse . transpose -- top left to bottom right
+rotations :: [[String] -> [String]]
+rotations =
+  [ id      -- 0°
+  , Grid.r1 -- 90°
+  , Grid.r2 -- 180°
+  , Grid.r3 -- 270°
   ]
 
--- Map diagonals onto rows
+transforms :: [[String] -> [String]]
+transforms = rotations ++ map (skew .) rotations
+
+-- 45° rotation
 skew :: [String] -> [String]
-skew = transpose . zipWith (++) padding
+skew = transpose . zipWith (++) padding . transpose
   where
     padding = [replicate n ' ' | n <- [0..]]
 

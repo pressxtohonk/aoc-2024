@@ -27,6 +27,22 @@ take r c grid = List.take c <$> List.take r grid
 empty :: Grid a
 empty = []
 
+-- Grid transformations
+r1 :: Grid a -> Grid a
+r1 = List.transpose . tx
+
+r2 :: Grid a -> Grid a
+r2 = tx . ty
+
+r3 :: Grid a -> Grid a
+r3 = List.transpose . ty
+
+tx :: Grid a -> Grid a
+tx = reverse
+
+ty :: Grid a -> Grid a
+ty = fmap reverse
+
 nrow :: Grid a -> Int
 nrow = length
 
