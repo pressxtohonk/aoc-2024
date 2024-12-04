@@ -44,6 +44,11 @@ nonEmpty parser = do
     then fail "expected non-empty parse result"
     else return token
 
+skipTill :: Parser a -> Parser a
+skipTill item = do
+  anyChar `manyTill` try (lookAhead item)
+  item
+
 linesOf :: Parser a -> Parser [a]
 linesOf item = item `endBy1` end
 

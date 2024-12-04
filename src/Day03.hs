@@ -5,68 +5,51 @@ import PressXToSolve (Solver, runCLI)
 import Text.Parsec
 import Control.Monad (void)
 
-mul :: Parser (Pair Int)
-mul = do
+data Cmd
+  = Mul Int Int
+  | Do
+  | Dont
+  deriving (Show, Eq)
+
+cmdMul :: Parser Cmd
+cmdMul = do
   string "mul("
   a <- int
   string ","
   b <- int
   string ")"
-  return (a, b)
+  return $ Mul a b
 
-doP :: Parser String
-doP = string "do()"
+cmdDo :: Parser Cmd
+cmdDo = Do <$ string "do()"
 
-dontP :: Parser String
-dontP = string "don't()"
+cmdDont :: Parser Cmd
+cmdDont = Dont <$ string "don't()"
 
--- mustParse enabled "mul(1,2)" = [(1,2)]
-enabled :: Parser [Pair Int]
-enabled = do
-  pair <- mul
-  return [pair]
+cmd :: Parser Cmd
+cmd = skipTill $ anyOf [cmdMul, cmdDo, cmdDont]
 
--- mustParse disabled "don't()...do()"  = []
--- mustParse disabled "don't()...<EOF>" = []
-disabled :: Parser [Pair Int]
-disabled = do
-  dontP >> (anyChar `manyTill` anyOf [void doP, eof])
-  return []
+prog :: Parser [Cmd]
+prog = many $ try cmd
 
--- mustParse gap "...mul(a,b)" = "..."
--- mustParse gap "...<EOF>"    = "..."
-gap :: Parser String
-gap = anyChar `manyTill` anyOf
-  [ void (lookAhead mul)
-  , eof
-  ]
-
--- mustParse gap' "...mul(a,b)" = "..."
--- mustParse gap' "...don't()"  = "..."
--- mustParse gap' "...<EOF>"    = "..."
-gap' :: Parser String
-gap' = anyChar `manyTill` anyOf
-  [ void (lookAhead enabled)
-  , void (lookAhead disabled)
-  , eof
-  ]
-
-prog :: Parser [Pair Int]
-prog = gap >> (mul `sepEndBy` gap)
-
-prog' :: Parser [Pair Int]
-prog' = do
-  pairs <- gap' >> (anyOf [enabled, disabled] `sepEndBy` gap')
-  return $ concat pairs
-
-eval :: [Pair Int] -> Int
-eval = sum . map (uncurry (*))
+eval :: [Cmd] -> Int
+eval = enabled 0 -- start in enabled state with result=0
+  where
+    enabled acc [] = acc
+    enabled acc (x:xs) = case x of
+      Mul a b -> enabled (a*b+acc) xs
+      Dont    -> disabled acc xs
+      _       -> enabled acc xs
+    disabled acc [] = acc
+    disabled acc (x:xs) = case x of
+      Do -> enabled acc xs
+      _  -> disabled acc xs
 
 solve1 :: Solver
 solve1 = show . eval . mustParse prog
 
 solve2 :: Solver
-solve2 = show . eval . mustParse prog'
+solve2 = show . eval . mustParse prog
 
 main :: IO ()
 main = runCLI solve1 solve2
