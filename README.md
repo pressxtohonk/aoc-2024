@@ -23,6 +23,14 @@ For example, to configure a target `example` with source directory `src/` and en
 
 ## Examples
 
+Build, test, and solve:
+
+    ./run [DAY] [PART]
+
+Building executable:
+
+    cabal build day01
+
 Running test cases:
 
     cabal run day01 1 "resources/tests/1.1.in" | diff "resources/tests/1.1.out" -

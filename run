@@ -1,0 +1,19 @@
+#!/bin/env bash
+
+run () {
+	# parse inputs
+	tests_out="./resources/tests/$1.$2.out"
+	tests_in="./resources/tests/$1.$2.in"
+	input_in="./resources/input/$1.$2.in"
+	day=$(printf 'day%02d' $1)
+
+	# execute stuff
+	echo "===== Day $1 Part $2 ====="
+	echo "> build $day"
+	cabal build $day
+	echo "> cat \"$tests_out\" : $(cat $tests_out)"
+	echo "> run \"$tests_in\"  : $(cabal run $day $2 $tests_in)"
+	echo "> run \"$input_in\"  : $(cabal run $day $2 $input_in)"
+}
+
+run $1 $2
