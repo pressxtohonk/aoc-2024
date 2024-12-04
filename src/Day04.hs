@@ -2,10 +2,11 @@ module Main where
 
 import PressXToParse
 import PressXToSolve (Solver, runCLI)
-import PressXToGrids (Grid)
+import PressXToGrids (Grid, (?))
 
 import qualified PressXToGrids as Grid
 import Data.List (transpose, isPrefixOf, tails)
+import Data.Bifunctor (Bifunctor(second, first))
 
 rotations :: [[String] -> [String]]
 rotations =
@@ -37,6 +38,37 @@ isXmas xs = case xs of
   [['S',_,'S'],[_,'A',_],['M',_,'M']] -> True
   _ -> False
 
+type Step = Pair Int -> Pair Int
+
+u = first succ
+d = first pred
+l = second pred
+r = second succ
+
+search :: Grid Char -> Step -> Pair Int -> String -> Bool
+search grid next = search'
+  where
+    search' pos word = case (grid ? pos, word) of
+      (_, "")      -> True  -- word found!
+      (Nothing, _) -> False -- pos out of bounds
+      (Just actual, expected:rest) ->
+        (actual == expected) && search' (next pos) rest
+
+-- alternate naive grid traversal solution
+-- (See solve2 for generic pattern search)
+solve1' :: Solver
+solve1' input = show $ length hits
+  where
+    grid = Grid.fromLists $ mustParse block input
+    nrow = Grid.nrow grid
+    ncol = Grid.ncol grid
+    hits = filter id $ do
+      direction <- [u, d, l, r, u.l, u.r, d.l, d.r]
+      i <- [0..nrow-1]
+      j <- [0..ncol-1]
+      return $ search grid direction (i, j) "XMAS"
+
+-- hacky (: search is fixed from left to right, but the grid rotates
 solve1 :: Solver
 solve1 input = show $ sum [ count "XMAS" line | f <- transforms, line <- f grid ]
   where
