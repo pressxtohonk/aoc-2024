@@ -5,10 +5,9 @@ import PressXToSolve (Solver, runCLI)
 import Text.Parsec
 
 import Data.Map (Map)
-import Data.Set (Set)
 import qualified Data.List as List
 import qualified Data.Map as Map
-import qualified Data.Set as Set
+import Data.Maybe (fromMaybe)
 
 type Rule = Pair Int
 type Update = [Int]
@@ -22,46 +21,29 @@ update = int `sepBy1` char ','
 inputs :: Parser ([Rule], [Update])
 inputs = (,) <$> linesOf rule <* eol <*> linesOf update
 
--- O(mn) to walk over input, O(mnlgn)
-
-summarize :: [Rule] -> Map Int (Set Int)
-summarize rules = 
-  let errors = Map.fromListWith (++) [(k, [v]) | (k, v) <- rules]
-  in Map.map Set.fromList errors
-
-follows :: Map Int (Set Int) -> Update -> Bool
-follows errors = f Set.empty
+follows :: [Rule] -> Update -> Bool
+follows rules update = all adhered rules
   where
-    f :: Set Int -> Update -> Bool
-    f _ [] = True
-    f seen (curr:rest) = 
-      let
-        okay = case Map.lookup curr errors of
-          Nothing   -> True
-          Just errs -> Set.disjoint seen errs
-        seen' = Set.insert curr seen
-      in
-        okay && f seen' rest
+    idx = Map.fromList $ zip update [0..]
+    adhered (lower, upper) = True `fromMaybe` isOrdered -- true if any lookup fails
+      where isOrdered = (<) <$> Map.lookup lower idx
+                            <*> Map.lookup upper idx
 
-correct :: Map Int (Set Int) -> Update -> Update
-correct errors = f Set.empty []
+fixWith :: [Rule] -> Update -> Update
+fixWith rules = addTo [] -- insert elems into a new list at correct positions
   where
-    f :: Set Int -> Update -> Update -> Update
-    f _ acc [] = reverse acc
-    f seen acc (curr:rest) = 
-      let
-        seen' = Set.insert curr seen
-        acc' = case Map.lookup curr errors of
-          Just errs | not (Set.disjoint seen errs) -> 
-            reverse . insertBefore errs curr . reverse $ acc
-          _ -> curr:acc
-      in
-        f seen' acc' rest
+    pageSuccessors = Map.fromListWith (++) [(lower, [upper]) | (lower, upper) <- rules]
+    addTo fixed [] = fixed
+    addTo fixed (page:rest) = addTo (combine page fixed) rest
+      where
+        combine = (:) `fromMaybe` do
+          successors <- Map.lookup page pageSuccessors   -- O[log n] for tree lookup
+          return $ insertBeforeFirst (`elem` successors) -- O[n] amortized (:
 
-insertBefore :: Set Int -> Int -> Update -> Update
-insertBefore set val xs =
-  let (heads, tail) = List.partition (`Set.notMember` set) xs
-  in heads ++ val:tail
+insertBeforeFirst :: (a -> Bool) -> a -> [a] -> [a]
+insertBeforeFirst pred x xs =
+  let (preds, succs) = List.partition (not . pred) xs
+  in preds ++ x : succs
 
 mid :: [a] -> a
 mid xs = slowfast xs xs
@@ -71,18 +53,14 @@ mid xs = slowfast xs xs
     slowfast (_:slow) (_:_:fast) = slowfast slow fast
 
 solve1 :: Solver
-solve1 input = show $ sum [ mid update | update <- updates, isOkay update ]
+solve1 input = show $ sum [ mid u | u <- updates, follows rules u ]
   where
     (rules, updates) = mustParse inputs input
-    isOkay = follows (summarize rules)
 
 solve2 :: Solver
-solve2 input = show $ sum [ mid (fix xs) | xs <- updates, not (isOkay xs) ]
+solve2 input = show $ sum [ mid (fixWith rules u) | u <- updates, not (follows rules u) ]
   where
     (rules, updates) = mustParse inputs input
-    errors = summarize rules
-    isOkay = follows errors
-    fix = correct errors
 
 main :: IO ()
 main = runCLI solve1 solve2
