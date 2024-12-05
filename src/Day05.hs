@@ -9,7 +9,6 @@ import Data.Set (Set)
 import qualified Data.List as List
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Data.Maybe (fromMaybe)
 
 type Rule = Pair Int
 type Update = [Int]
@@ -21,16 +20,7 @@ update :: Parser Update
 update = int `sepBy1` char ','
 
 inputs :: Parser ([Rule], [Update])
-inputs = do
-  blks <- blocks
-  case blks of
-    [rulesIn, updatesIn] ->
-      let 
-        rules = mustParse (linesOf rule) (unlines rulesIn)
-        updates = mustParse (linesOf update) (unlines updatesIn)
-      in
-        return (rules, updates)
-    xs -> error $ "expected 2 sections in input, got " ++ show (length xs)
+inputs = (,) <$> linesOf rule <* eol <*> linesOf update
 
 -- O(mn) to walk over input, O(mnlgn)
 
