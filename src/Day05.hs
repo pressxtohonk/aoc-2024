@@ -6,6 +6,7 @@ import Text.Parsec
 
 import Data.Map (Map)
 import Data.Set (Set)
+import qualified Data.List as List
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Maybe (fromMaybe)
@@ -52,6 +53,26 @@ follows errors = f Set.empty
       in
         okay && f seen' rest
 
+correct :: Map Int (Set Int) -> Update -> Update
+correct errors = f Set.empty []
+  where
+    f :: Set Int -> Update -> Update -> Update
+    f _ acc [] = reverse acc
+    f seen acc (curr:rest) = 
+      let
+        seen' = Set.insert curr seen
+        acc' = case Map.lookup curr errors of
+          Just errs | not (Set.disjoint seen errs) -> 
+            reverse . insertBefore errs curr . reverse $ acc
+          _ -> curr:acc
+      in
+        f seen' acc' rest
+
+insertBefore :: Set Int -> Int -> Update -> Update
+insertBefore set val xs =
+  let (heads, tail) = List.partition (`Set.notMember` set) xs
+  in heads ++ val:tail
+
 mid :: [a] -> a
 mid xs = slowfast xs xs
   where
@@ -66,7 +87,12 @@ solve1 input = show $ sum [ mid update | update <- updates, isOkay update ]
     isOkay = follows (summarize rules)
 
 solve2 :: Solver
-solve2 = show . const ""
+solve2 input = show $ sum [ mid (fix xs) | xs <- updates, not (isOkay xs) ]
+  where
+    (rules, updates) = mustParse inputs input
+    errors = summarize rules
+    isOkay = follows errors
+    fix = correct errors
 
 main :: IO ()
 main = runCLI solve1 solve2
