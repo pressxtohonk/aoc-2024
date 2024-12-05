@@ -45,6 +45,7 @@ executable day05
     main-is:              Day05.hs
     other-modules:        PressXToParse, PressXToSolve
     build-depends:        base
+                        , containers
                         , parsec
 
 executable day06
