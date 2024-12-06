@@ -30,7 +30,7 @@ step ((r, c), R) = ((r, c + 1), R)
 data Board = Board
   { nrow :: Int,
     ncol :: Int,
-    blocked :: Set (Int, Int)
+    filled :: Set (Int, Int)
   }
   deriving (Show)
 
@@ -41,10 +41,10 @@ hasCell (Board nrow ncol _) (r, c)
   | otherwise = True
 
 filledAt :: Board -> Pos -> Bool
-filledAt (Board _ _ blocked) pos = Set.member pos blocked
+filledAt board pos = Set.member pos (filled board)
 
-emptyAt :: Board -> Pos -> Bool
-emptyAt b = not . filledAt b
+fill :: Board -> Pos -> Board
+fill board pos = board { filled = Set.insert pos (filled board) }
 
 -- Parsers
 posP :: Parser Pos
@@ -75,30 +75,25 @@ boardP = do
   return $ Board nrow ncol blocked
 
 -- given a board and a starting move, return a sequence of moves to exit the board if it exists
-data PathError = InvalidState | CycleDetected deriving (Show, Eq)
+data PathResult = InvalidState | CycleDetected | Path [Move] deriving (Show, Eq)
 
-exitPath :: Board -> Move -> Either PathError [Move]
+exitPath :: Board -> Move -> PathResult
 exitPath board = walkBoard Set.empty []
   where
-    walkBoard :: Set Move -> [Move] -> Move -> Either PathError [Move]
+    walkBoard :: Set Move -> [Move] -> Move -> PathResult
     walkBoard moves path move@(pos, _)
-      | not (board `hasCell` pos) = Right path -- exited, return the path taken
-      | not (board `emptyAt` pos) = Left InvalidState -- should never be *in* a blocked cell
-      | Set.member move moves = Left CycleDetected -- repeating moves
+      | not (board `hasCell` pos) = Path path -- exited, return the path taken
+      | board `filledAt` pos = InvalidState -- should never be *in* a blocked cell
+      | Set.member move moves = CycleDetected -- repeating moves
       | otherwise = walkBoard (Set.insert move moves) (move : path) (update move)
       where
         (nextPos, _) = step move
         update = if board `filledAt` nextPos then turn else step
 
-hasCycle :: Either PathError a -> Bool
-hasCycle res = case res of
-  Left CycleDetected -> True
-  _ -> False
-
-addObstruction :: Pos -> Board -> Board
-addObstruction pos (Board nrow ncol blocked) = Board nrow ncol blocked'
-  where
-    blocked' = Set.insert pos blocked
+unwrapPath :: PathResult -> [Move]
+unwrapPath res = case res of
+    Path path -> path
+    pathError -> error $ show pathError
 
 distinct :: (Ord a) => [a] -> [a]
 distinct = Set.toList . Set.fromList
@@ -107,28 +102,20 @@ distinct = Set.toList . Set.fromList
 solve1 :: Solver
 solve1 input = show . length . distinct $ [pos | (pos, _) <- path]
   where
-    start :: Pos
     start = mustParse startP input
-    board :: Board
     board = mustParse boardP input
-    path = case exitPath board (start, U) of
-      Left pathError -> error $ show pathError
-      Right path -> path
+    path = unwrapPath $ exitPath board (start, U)
 
 solve2 :: Solver
 solve2 input = show (length cyclic)
   where
-    start :: Pos
-    start = mustParse startP input
-    board :: Board
-    board = mustParse boardP input
     -- Compute path that guard takes to exit the grid
-    path = case exitPath board (start, U) of
-      Left pathError -> error $ show pathError
-      Right path -> path
+    start = mustParse startP input
+    board = mustParse boardP input
+    path = unwrapPath $ exitPath board (start, U)
     -- Collect positions along the path that creates cycles when obstructed
-    createsCycle pos = hasCycle $ exitPath (addObstruction pos board) (start, U)
-    cyclic = distinct [pos | (pos, _) <- path, pos /= start, createsCycle pos]
+    pathWithout pos = exitPath (board `fill` pos) (start, U)
+    cyclic = distinct [pos | (pos, _) <- path, pathWithout pos == CycleDetected]
 
 main :: IO ()
 main = runCLI solve1 solve2
