@@ -1,6 +1,8 @@
 module Main where
 
 -- TODO: Compare performance with Data.HashSet vs Data.Set
+import Data.Map (Map)
+import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import qualified PressXToGrids as Grid
@@ -46,6 +48,22 @@ filledAt board pos = Set.member pos (filled board)
 fill :: Board -> Pos -> Board
 fill board pos = board { filled = Set.insert pos (filled board) }
 
+-- optimized board traversal until next object or out of bounds
+jumpWith :: Board -> Move -> Move
+jumpWith board = jump
+  where
+    objs = Set.toList (filled board)
+    byRow = Map.fromListWith (++) [(r, [c]) | (r, c) <- objs]
+    byCol = Map.fromListWith (++) [(c, [r]) | (r, c) <- objs]
+    get = Map.findWithDefault []
+    m = nrow board + 1 -- first out of bounds row
+    n = ncol board + 1 -- first out of bounds col
+    jump (pos, dir) = (jump' dir pos, dir)
+    jump' U (r, c) = foldl max (0, c) [(r'+1, c) | r' <- get c byCol, r' < r]
+    jump' D (r, c) = foldl min (m, c) [(r'-1, c) | r' <- get c byCol, r < r']
+    jump' L (r, c) = foldl max (r, 0) [(r, c'+1) | c' <- get r byRow, c' < c]
+    jump' R (r, c) = foldl min (r, n) [(r, c'-1) | c' <- get r byRow, c < c']
+
 -- Parsers
 startP :: Parser Pos
 startP = coordOf (char '^')
@@ -77,6 +95,20 @@ exitPath board = walkBoard Set.empty []
         (nextPos, _) = step move
         update = if board `filledAt` nextPos then turn else step
 
+exitPath' :: Board -> Move -> PathResult
+exitPath' board = walkBoard Set.empty []
+  where
+    walkBoard :: Set Move -> [Move] -> Move -> PathResult
+    walkBoard moves path move@(pos, _)
+      | not (board `hasCell` pos) = Path path -- exited, return the path taken
+      | board `filledAt` pos = InvalidState -- should never be *in* a blocked cell
+      | Set.member move moves = CycleDetected -- repeating moves
+      | otherwise = walkBoard (Set.insert move moves) (move : path) (update move)
+      where
+        jump = jumpWith board
+        (nextPos, _) = step move
+        update = if board `filledAt` nextPos then turn else jump
+
 unwrapPath :: PathResult -> [Move]
 unwrapPath res = case res of
     Path path -> path
@@ -101,7 +133,7 @@ solve2 input = show (length cyclic)
     board = mustParse boardP input
     path = unwrapPath $ exitPath board (start, U)
     -- Collect positions along the path that creates cycles when obstructed
-    pathWithout pos = exitPath (board `fill` pos) (start, U)
+    pathWithout pos = exitPath' (board `fill` pos) (start, U)
     cyclic = distinct [pos | (pos, _) <- path, pathWithout pos == CycleDetected]
 
 main :: IO ()
