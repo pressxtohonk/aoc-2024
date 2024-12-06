@@ -51,8 +51,9 @@ executable day05
 executable day06
     hs-source-dirs:       src
     main-is:              Day06.hs
-    other-modules:        PressXToParse, PressXToSolve
+    other-modules:        PressXToGrids, PressXToParse, PressXToSolve
     build-depends:        base
+                        , containers
                         , parsec
 
 executable day07
