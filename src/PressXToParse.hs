@@ -36,6 +36,27 @@ block = linesOf line
 blocks :: Parser [[String]]
 blocks = linesOf block
 
+-- coordinate combinators
+coord :: Parser (Pair Int)
+coord = do
+  pos <- getPosition
+  let r = sourceLine pos
+  let c = sourceColumn pos
+  return (r, c)
+
+coordOf :: Parser a -> Parser (Pair Int)
+coordOf item = do
+  skipTill item
+  (r, c) <- coord
+  return (r, c-1)
+
+rangeOf :: Parser a -> Parser (Pair (Pair Int))
+rangeOf item = do
+  skipTill (lookAhead item)
+  lb <- coord
+  ub <- coordOf item
+  return (lb, ub)
+
 -- custom combinators
 nonEmpty :: Foldable f => Parser (f a) -> Parser (f a)
 nonEmpty parser = do

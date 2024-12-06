@@ -47,32 +47,19 @@ fill :: Board -> Pos -> Board
 fill board pos = board { filled = Set.insert pos (filled board) }
 
 -- Parsers
-posP :: Parser Pos
-posP = do
-  pos <- getPosition
-  let r = sourceLine pos
-  let c = sourceColumn pos
-  return (r, c)
-
 startP :: Parser Pos
-startP = do
-  skipTill (char '^')
-  (r, c) <- posP
-  return (r, c - 1)
+startP = coordOf (char '^')
 
-obstruction :: Parser Pos
-obstruction = do
-  skipTill (char '#')
-  (r, c) <- posP
-  return (r, c - 1)
+filledP :: Parser Pos
+filledP = coordOf (char '#')
 
 boardP :: Parser Board
 boardP = do
   grid <- lookAhead block
   let nrow = Grid.nrow grid
   let ncol = Grid.ncol grid
-  blocked <- Set.fromList <$> many (try obstruction)
-  return $ Board nrow ncol blocked
+  filled <- Set.fromList <$> many (try filledP)
+  return $ Board nrow ncol filled
 
 -- given a board and a starting move, return a sequence of moves to exit the board if it exists
 data PathResult = InvalidState | CycleDetected | Path [Move] deriving (Show, Eq)
