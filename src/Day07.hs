@@ -4,11 +4,9 @@ import PressXToParse
 import PressXToSolve (Solver, runCLI)
 import Text.Parsec
 import Control.Applicative (asum)
-import Data.Maybe (isJust)
+import Data.Maybe (isJust, fromJust)
 import Control.Monad (guard)
-import Data.List (stripPrefix)
-
-type Op = (Int -> Int -> Int)
+import Data.List (find)
 
 equation :: Parser (Int, [Int])
 equation = do
@@ -17,61 +15,84 @@ equation = do
   xs <- int `sepBy` char ' '
   return (y, xs)
 
--- given a set of left associative binary operations, find a sequence that, when applied to a list of inputs, produces the target output.
-solveWith :: [Op] -> Int -> [Int] -> Maybe [Op]
-solveWith ops y []     = Nothing
-solveWith ops y (x:xs) = go [] x xs
-  where
-    go acc y' inputs = case inputs of
-      (x':xs') | y' <= y -> asum [go (op:acc) (op y' x') xs' | op <- ops]
-      []       | y' == y -> Just (reverse acc)
-      _ -> Nothing
+-- lowest power of ten greater than x
+-- NOTE: Hack to help to avoid *slow* string operations in `cat` and `cat'`
+-- These operations run at every branch of the search tree in part 2, so the
+-- performance boost from avoiding string manipulation is significant.
+offset :: Int -> Int
+offset x = fromJust $ find (x <) tens where tens = 10 : fmap (10 *) tens
 
-data OpCode = Add | Mul | Cat deriving (Show, Eq)
+-- Binary operation that can fail on invalid inputs
+type Op = (Int -> Int -> Maybe Int)
 
--- The previous solver finds a function `f` that satisfies `f(xs) = y`.
--- This solver finds its inverse `f'` that satisfies `f'(y) = xs`
--- This works well as the inverses of integer multiplication (integer division) and string concatenation (string decomposition) have much stricter conditions than the originals.
-solveFromBack :: Int -> [Int] -> Maybe [OpCode]
-solveFromBack y xs = go [] y (reverse xs)
-  where
-    go :: [OpCode] -> Int -> [Int] -> Maybe [OpCode]
-    go acc y' [] = Nothing
-    go acc y' (x':xs')
-      | null xs' && (y' == x') = Just acc
-      | otherwise = asum [undoAdd, undoMul, undoCat]
-      where
-        undoAdd = do
-          let y'' = y' - x'
-          guard (y'' >= 0) -- ensure non-negative value after subtraction
-          go (Add:acc) y'' xs'
-        undoMul = do
-          let (y'', r) = divMod y' x'
-          guard (r == 0) -- ensure integer value after division
-          go (Mul:acc) y'' xs'
-        undoCat = do
-          guard (x' /= y') -- ensure non-empty value after deconstruction
-          let sx' = reverse (show x')
-          let sy' = reverse (show y')
-          y'' <- read . reverse <$> stripPrefix sx' sy'
-          go (Cat:acc) y'' xs'
+-- Forward operations
+add :: Op
+add a b = Just (a + b)
 
--- concatenates two integers
+mul :: Op
+mul a b = Just (a * b)
+
 cat :: Op
-cat a b = read (show a ++ show b)
+cat a b = Just (offset b * a + b)
+
+-- Backward operations (inverses)
+
+-- subtraction
+add' :: Op
+add' y x = do
+  let diff = y - x
+  guard (diff >= 0)
+  return diff
+
+-- "Perfect" integer division
+mul' :: Op
+mul' y x = do
+  let (q, r) = quotRem y x
+  guard (r == 0)
+  return q
+
+-- "Perfect" suffix removal
+cat' :: Op
+cat' y x = do
+  let (q, r) = divMod (y - x) (offset x)
+  guard (r == 0)
+  guard (q > 0)
+  return q
+
+-- Given a set of left associative binary operations, returns a list that folds
+-- an initial value and a list of intermediate values into a target value.
+-- i.e. the following identity is true:
+--   fs = solveWith ops y x0 xs
+--   y' = foldl (flip ($)) x0 (zipWith ($) fs xs)
+--   y = y'
+solveWith :: [Op] -> Int -> Int -> ([Int] -> Maybe [Op])
+solveWith ops target initial = go [] (Just initial)
+  where
+    go :: [Op] -> Maybe Int -> [Int] -> Maybe [Op]
+    go acc my xs = do
+      y <- my
+      case xs of
+        [] -> if y == target then Just (reverse acc) else Nothing
+        (x:xs) -> asum [ go (op:acc) (y `op` x) xs | op <- ops]
 
 solve1 :: Solver
-solve1 input = show $ sum [ y | (y, xs) <- equations, hasSoln y xs ]
+solve1 input = show $ sum [ y | (y, x:xs) <- equations, hasSoln y x xs ]
   where
     equations = mustParse (linesOf equation) input
-    hasSoln y = isJust . solveWith [(+), (*)] y
+    hasSoln y x xs = isJust $ solveWith [add, mul] y x xs
 
 solve2 :: Solver
-solve2 input = show $ sum [ y | (y, xs) <- equations, hasSoln' y xs ]
+solve2 input = show $ sum [ y | (y, x:xs) <- equations, hasSoln' y x xs ]
   where
     equations = mustParse (linesOf equation) input
-    hasSoln y = isJust . solveWith [(+), (*), cat] y
-    hasSoln' y = isJust . solveFromBack y
+    hasSoln y x xs = isJust $ solveWith [add, mul, cat] y x xs
+    -- NOTE: Part 2 demonstrates a nifty mathematical optimization (:
+    -- The order of x, xs, y is reversed and inversed operators are used.
+    -- Solving this "dual input" turns out to yield a decent speedup. This is
+    -- mainly because integer division and "un-concatenation" are much stricter
+    -- than their non-reversed counterparts.These additional constraints lead
+    -- to much more aggressive pruning of the search tree.
+    hasSoln' y x xs = isJust $ solveWith [add', mul', cat'] x y (reverse xs)
 
 main :: IO ()
 main = runCLI solve1 solve2
