@@ -3,6 +3,10 @@ module Main where
 import PressXToParse
 import PressXToSolve (Solver, runCLI)
 import Text.Parsec
+import Control.Applicative (asum)
+import Data.Maybe (isJust)
+
+type Op = (Int -> Int -> Int)
 
 equation :: Parser (Int, [Int])
 equation = do
@@ -11,39 +15,31 @@ equation = do
   xs <- int `sepBy` char ' '
   return (y, xs)
 
-hasSoln :: Int -> [Int] -> Bool
-hasSoln y = search 0
+-- given a set of left associative binary operations, find a sequence that, when applied to a list of inputs, produces the target output.
+solveWith :: [Op] -> Int -> [Int] -> Maybe [Op]
+solveWith ops y []     = Nothing
+solveWith ops y (x:xs) = go [] x xs
   where
-    search y' xs
-      | y == y' = True
-      | y < y' = False
-      | otherwise = case xs of
-        [] -> False
-        (x:xs') -> search (y'*x) xs' || search (y'+x) xs'
+    go acc y' inputs = case inputs of
+      (x':xs') | y' <= y -> asum [go (op:acc) (op y' x') xs' | op <- ops]
+      []       | y' == y -> Just (reverse acc)
+      _ -> Nothing
 
-hasSoln' :: Int -> [Int] -> Bool
-hasSoln' y = search 0
-  where
-    search y' nums
-      | y' > y = False
-      | otherwise = case nums of
-        [] -> y' == y
-        (x:xs) -> search (cat y' x) xs
-               || search ((*) y' x) xs
-               || search ((+) y' x) xs
-
-cat :: Int -> Int -> Int
+-- concatenates two integers
+cat :: Op
 cat a b = read (show a ++ show b)
 
 solve1 :: Solver
 solve1 input = show $ sum [ y | (y, xs) <- equations, hasSoln y xs ]
   where
     equations = mustParse (linesOf equation) input
+    hasSoln y = isJust . solveWith [(+), (*)] y
 
 solve2 :: Solver
 solve2 input = show $ sum [ y | (y, xs) <- equations, hasSoln' y xs ]
   where
     equations = mustParse (linesOf equation) input
+    hasSoln' y = isJust . solveWith [(+), (*), cat] y
 
 main :: IO ()
 main = runCLI solve1 solve2
