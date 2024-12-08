@@ -4,6 +4,7 @@ import Control.Monad (void)
 import Text.Parsec
 
 type Pair a = (a, a)
+
 type Trio a = (a, a, a)
 
 type Parser = Parsec String ()
@@ -48,7 +49,7 @@ coordOf :: Parser a -> Parser (Pair Int)
 coordOf item = do
   skipTill item
   (r, c) <- coord
-  return (r, c-1)
+  return (r, c - 1)
 
 rangeOf :: Parser a -> Parser (Pair (Pair Int))
 rangeOf item = do
@@ -57,8 +58,14 @@ rangeOf item = do
   ub <- coordOf item
   return (lb, ub)
 
+withCoord :: Parser a -> Parser (Int, Int, a)
+withCoord item = do
+  value <- skipTill item
+  (r, c) <- coord
+  return (r, c - 1, value)
+
 -- custom combinators
-nonEmpty :: Foldable f => Parser (f a) -> Parser (f a)
+nonEmpty :: (Foldable f) => Parser (f a) -> Parser (f a)
 nonEmpty parser = do
   token <- parser
   if null token
@@ -91,4 +98,3 @@ trio item = do
   spaces
   c <- item
   return (a, b, c)
-
