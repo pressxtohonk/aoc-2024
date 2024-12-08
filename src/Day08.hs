@@ -5,31 +5,10 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import qualified PressXToGrids as Grid
+import PressXToBoard
 import PressXToParse
 import PressXToSolve (Solver, runCLI)
 import Text.Parsec
-
--- TODO: This is shared with day 6, move to shared module.
-data Board = Board
-  { nrow :: Int,
-    ncol :: Int,
-    filled :: Set (Int, Int)
-  }
-  deriving (Show)
-
-type Pos = Pair Int
-
-hasCell :: Board -> Pos -> Bool
-hasCell (Board nrow ncol _) (r, c)
-  | (r < 1) || (nrow < r) = False
-  | (c < 1) || (ncol < c) = False
-  | otherwise = True
-
-filledAt :: Board -> Pos -> Bool
-filledAt board pos = Set.member pos (filled board)
-
-fill :: Board -> Pos -> Board
-fill board pos = board {filled = Set.insert pos (filled board)}
 
 -- input parsing
 antennaP :: Parser (Int, Int, Char)
