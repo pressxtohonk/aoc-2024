@@ -77,6 +77,8 @@ executable day09
     default-extensions:   TupleSections
     other-modules:        PressXToParse, PressXToSolve
     build-depends:        base
+                        , containers
+                        , mtl
                         , parsec
 
 executable day10

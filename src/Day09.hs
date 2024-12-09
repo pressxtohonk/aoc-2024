@@ -1,12 +1,15 @@
 module Main where
 
 import Control.Applicative ((<|>))
+import Control.Monad.State
 import Data.Foldable (concatMap)
 import Data.Functor ((<&>))
-import Data.Maybe (fromMaybe)
+import Data.Maybe (catMaybes, fromMaybe, isJust, mapMaybe)
+import Data.Set (Set)
+import qualified Data.Set as Set
 import PressXToParse hiding (block, blocks)
 import PressXToSolve (Solver, runCLI)
-import Text.Parsec hiding ((<|>))
+import Text.Parsec (anyChar, digit, getPosition, many, sourceColumn)
 
 -- Group of blocks
 data Span
@@ -91,7 +94,7 @@ solve2 :: Solver
 solve2 = show . checksum . spansToBlocks . compactSpans . uncompress . mustParse files
 
 main :: IO ()
-main = runCLI solve1 solve2
+main = runCLI solve1 solve2'
 
 -- debugging
 block :: Parser Block
@@ -111,3 +114,72 @@ display (Space _) = "."
 display' :: Span -> String
 display' (FileSpan _ n x) = concatMap (replicate n) (show x)
 display' (SpaceSpan _ n) = replicate n '.'
+
+-- Optimized part 2 soln
+type Range = (Int, Int) -- index, size
+
+-- builds a list of sets, where i-th set contains space ranges with size i+1
+initCache :: [Span] -> [Set Range]
+initCache spans =
+  [ Set.fromList [(i, n) | SpaceSpan i n <- spans, n == 1],
+    Set.fromList [(i, n) | SpaceSpan i n <- spans, n == 2],
+    Set.fromList [(i, n) | SpaceSpan i n <- spans, n == 3],
+    Set.fromList [(i, n) | SpaceSpan i n <- spans, n == 4],
+    Set.fromList [(i, n) | SpaceSpan i n <- spans, n == 5],
+    Set.fromList [(i, n) | SpaceSpan i n <- spans, n == 6],
+    Set.fromList [(i, n) | SpaceSpan i n <- spans, n == 7],
+    Set.fromList [(i, n) | SpaceSpan i n <- spans, n == 8],
+    Set.fromList [(i, n) | SpaceSpan i n <- spans, n >= 9]
+  ]
+
+-- Returns the lowest range in the set that can contain the given range
+query :: Range -> Set Range -> Maybe Range
+query (i, n) spans
+  | null spans = Nothing
+  | otherwise =
+      let (i', n') = minimum spans
+       in if (i' <= i) && (n <= n')
+            then Just (i', n')
+            else Nothing
+
+-- Returns the lowest range among all the set that can contain the given range
+queryAll :: Range -> [Set Range] -> Maybe Range
+queryAll (i, n) gaps = case mapMaybe (query (i, n)) gaps of
+  [] -> Nothing
+  xs -> Just (minimum xs)
+
+-- Returns a copy of the set list where set `i` has been modified by `f`
+updateSet :: Int -> (Set a -> Set a) -> [Set a] -> [Set a]
+updateSet i f gaps =
+  case splitAt i gaps of
+    (head, spans : tail) -> head ++ f spans : tail
+    _ -> error $ "could not update gaps at idx " ++ show i
+
+-- For a file range, return a state action that yield its position when flushed left.
+-- The state containing sets of space ranges created by `initCache` is updated accordingly.
+flushLeft :: Range -> State [Set Range] Range
+flushLeft (i, n) = do
+  gaps <- get
+  case queryAll (i, n) gaps of
+    Nothing -> return (i, n)
+    Just (i', n')
+      | n < n' -> modify (doInsert . doDelete) >> return (i', n)
+      | n == n' -> modify doDelete >> return (i', n)
+      | otherwise -> error "update failed as queryAll returned gap with insufficient size"
+      where
+        doDelete = updateSet (n' - 1) (Set.delete (i', n'))
+        doInsert = updateSet (n' - n - 1) (Set.insert (i' + n, n' - n))
+
+-- Runs a sequence of `flushLeft` actions for each file range with initial state `spacesCache`
+compactSpans' :: [Span] -> [Span]
+compactSpans' spans = evalState updateFiles spacesCache
+  where
+    spacesCache = initCache spans
+    updateFiles = sequenceA [spanWithId k <$> flushLeft (i, n) | FileSpan i n k <- reverse spans]
+    spanWithId k (i, n) = FileSpan i n k
+
+checksum' :: [Span] -> Int
+checksum' spans = sum [k * sum [i .. i + n - 1] | FileSpan i n k <- spans]
+
+solve2' :: Solver
+solve2' = show . checksum' . compactSpans' . uncompress . mustParse files
