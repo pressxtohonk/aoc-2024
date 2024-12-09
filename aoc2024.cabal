@@ -74,6 +74,7 @@ executable day08
 executable day09
     hs-source-dirs:       src
     main-is:              Day09.hs
+    default-extensions:   TupleSections
     other-modules:        PressXToParse, PressXToSolve
     build-depends:        base
                         , parsec

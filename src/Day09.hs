@@ -1,10 +1,12 @@
 module Main where
 
+import Control.Applicative ((<|>))
 import Data.Foldable (concatMap)
+import Data.Functor ((<&>))
 import Data.Maybe (fromMaybe)
 import PressXToParse hiding (block, blocks)
 import PressXToSolve (Solver, runCLI)
-import Text.Parsec
+import Text.Parsec hiding ((<|>))
 
 -- Group of blocks
 data Span
@@ -49,30 +51,31 @@ compactBlocks blocks = go blocks [File i n | File i n <- reverse blocks]
           (Space i, File _ n) -> File i n : go xs xs'
           _ -> error $ "compact received non-file block at reverse pointer: " ++ show (x, x')
 
-insert :: Span -> [Span] -> Maybe [Span]
-insert fs spans = case (fs, spans) of
-  (FileSpan _ n _, SpaceSpan i' n' : rest)
-    | n < n' -> Just $ fs : SpaceSpan (i' + n) (n' - n) : rest
-    | n == n' -> Just $ fs : rest
-  (FileSpan _ n _, span : rest) -> (span :) <$> insert fs rest
+-- Starting from the right, push all file spans to the left most slot it can fit into
+compactSpans :: [Span] -> [Span]
+compactSpans spans = go [] (reverse spans)
+  where
+    go :: [Span] -> [Span] -> [Span]
+    go acc [] = acc
+    go acc (last : rest) = case last of
+      SpaceSpan {} -> go (last : acc) rest
+      FileSpan i n x -> go (last' : acc) rest'
+        where
+          (last', rest') = maybe (last, rest) (SpaceSpan i n,) (tryInsertR last rest)
+
+-- tries to insert a file span into the right most slot it can fit into
+tryInsertR :: Span -> [Span] -> Maybe [Span]
+tryInsertR span spans = case spans of
+  (x : xs) -> ((x :) <$> tryInsertR span xs) <|> (tryWriteR span x <&> (++ xs))
   _ -> Nothing
 
-trySwapWithSpace :: (Span, [Span]) -> (Span, [Span])
-trySwapWithSpace pair = case pair of
-  (SpaceSpan {}, _) -> pair
-  (fileSpan, spans) -> fromMaybe pair $ do
-    spans' <- insert fileSpan spans
-    return (SpaceSpan (sidx fileSpan) (slen fileSpan), spans')
-
-compactSpans :: [Span] -> [Span]
-compactSpans = reverse . go . reverse
-  where
-    go :: [Span] -> [Span]
-    go reversed = case reversed of
-      (last : rest) ->
-        let (last', rest') = trySwapWithSpace (last, reverse rest)
-         in last' : go (reverse rest')
-      _ -> []
+-- tries to write a file span into a space span, flushed right
+tryWriteR :: Span -> Span -> Maybe [Span]
+tryWriteR src dst = case (src, dst) of
+  (FileSpan i n x, SpaceSpan i' n')
+    | n' > n -> Just [SpaceSpan (i' + n) (n' - n), FileSpan i n x]
+    | n' == n -> Just [FileSpan i n x]
+  _ -> Nothing
 
 checksum :: [Block] -> Int
 checksum blocks = sum $ zipWith (*) [0 ..] (fmap value blocks)
