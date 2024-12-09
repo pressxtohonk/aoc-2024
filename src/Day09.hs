@@ -6,6 +6,12 @@ import PressXToParse hiding (block, blocks)
 import PressXToSolve (Solver, runCLI)
 import Text.Parsec
 
+-- Group of blocks
+data Span
+  = FileSpan {sidx :: Int, slen :: Int, sid :: Int}
+  | SpaceSpan {sidx :: Int, slen :: Int}
+  deriving (Show, Eq)
+
 data Block
   = File {idx :: Int, id :: Int}
   | Space {idx :: Int}
@@ -14,22 +20,24 @@ data Block
 files :: Parser [Int]
 files = many ((\d -> read [d]) <$> digit)
 
-uncompress :: [Int] -> [Block]
+uncompress :: [Int] -> [Span]
 uncompress = goFile 0 0
   where
-    goFile srcIdx dstIdx [] = []
-    goFile srcIdx dstIdx (x : xs) = uncompressFile srcIdx dstIdx x ++ goSpace (srcIdx + 1) (dstIdx + x) xs
-    goSpace srcIdx dstIdx [] = []
-    goSpace srcIdx dstIdx (x : xs) = uncompressSpace srcIdx dstIdx x ++ goFile srcIdx (dstIdx + x) xs
+    goFile fileId dstIdx [] = []
+    goFile fileId dstIdx (x : xs) = FileSpan dstIdx x fileId : goSpace (fileId + 1) (dstIdx + x) xs
+    goSpace fileId dstIdx [] = []
+    goSpace fileId dstIdx (x : xs) = SpaceSpan dstIdx x : goFile fileId (dstIdx + x) xs
 
-uncompressFile :: Int -> Int -> Int -> [Block]
-uncompressFile srcIdx dstIdx n = [File i srcIdx | i <- [dstIdx .. dstIdx + n - 1]]
+spansToBlocks :: [Span] -> [Block]
+spansToBlocks = concatMap spanToBlocks
 
-uncompressSpace :: Int -> Int -> Int -> [Block]
-uncompressSpace srcIdx dstIdx n = [Space i | i <- [dstIdx .. dstIdx + n - 1]]
+spanToBlocks :: Span -> [Block]
+spanToBlocks span = case span of
+  SpaceSpan i n -> [Space i' | i' <- [i .. i + n - 1]]
+  FileSpan i n x -> [File i' x | i' <- [i .. i + n - 1]]
 
-compact :: [Block] -> [Block]
-compact blocks = go blocks [File i n | File i n <- reverse blocks]
+compactBlocks :: [Block] -> [Block]
+compactBlocks blocks = go blocks [File i n | File i n <- reverse blocks]
   where
     go :: [Block] -> [Block] -> [Block]
     go [] _ = [] -- done compacting
@@ -40,19 +48,6 @@ compact blocks = go blocks [File i n | File i n <- reverse blocks]
           (File i _, _) -> x : go xs (x' : xs')
           (Space i, File _ n) -> File i n : go xs xs'
           _ -> error $ "compact received non-file block at reverse pointer: " ++ show (x, x')
-
-data Span
-  = FileSpan {sidx :: Int, slen :: Int, sid :: Int}
-  | SpaceSpan {sidx :: Int, slen :: Int}
-  deriving (Show, Eq)
-
-uncompress' :: [Int] -> [Span]
-uncompress' = goFile 0 0
-  where
-    goFile fileId dstIdx [] = []
-    goFile fileId dstIdx (x : xs) = FileSpan dstIdx x fileId : goSpace (fileId + 1) (dstIdx + x) xs
-    goSpace fileId dstIdx [] = []
-    goSpace fileId dstIdx (x : xs) = SpaceSpan dstIdx x : goFile fileId (dstIdx + x) xs
 
 insert :: Span -> [Span] -> Maybe [Span]
 insert fs spans = case (fs, spans) of
@@ -69,8 +64,8 @@ trySwapWithSpace pair = case pair of
     spans' <- insert fileSpan spans
     return (SpaceSpan (sidx fileSpan) (slen fileSpan), spans')
 
-compact' :: [Span] -> [Span]
-compact' = reverse . go . reverse
+compactSpans :: [Span] -> [Span]
+compactSpans = reverse . go . reverse
   where
     go :: [Span] -> [Span]
     go reversed = case reversed of
@@ -78,11 +73,6 @@ compact' = reverse . go . reverse
         let (last', rest') = trySwapWithSpace (last, reverse rest)
          in last' : go (reverse rest')
       _ -> []
-
-spanToBlocks :: Span -> [Block]
-spanToBlocks span = case span of
-  SpaceSpan i n -> [Space i' | i' <- [i .. i + n - 1]]
-  FileSpan i n x -> [File i' x | i' <- [i .. i + n - 1]]
 
 checksum :: [Block] -> Int
 checksum blocks = sum $ zipWith (*) [0 ..] (fmap value blocks)
@@ -92,10 +82,10 @@ value (Space _) = 0
 value (File _ x) = x
 
 solve1 :: Solver
-solve1 = show . checksum . compact . uncompress . mustParse files
+solve1 = show . checksum . compactBlocks . spansToBlocks . uncompress . mustParse files
 
 solve2 :: Solver
-solve2 = show . checksum . concatMap spanToBlocks . compact' . uncompress' . mustParse files
+solve2 = show . checksum . spansToBlocks . compactSpans . uncompress . mustParse files
 
 main :: IO ()
 main = runCLI solve1 solve2
