@@ -13,31 +13,28 @@ equation = do
   return (y, xs)
 
 -- why do hard when simple do trick
-data Tree a = Leaf a | Tree a (Tree a) (Tree a) (Tree a)
-
--- check if a predicate matches any leaf values
-anyLeaf :: (a -> Bool) -> Tree a -> Bool
-anyLeaf p (Leaf x)       = p x
-anyLeaf p (Tree _ l m r) = any (anyLeaf p) [l, m, r]
+search :: [Int -> Int -> Int] -> [Int] -> [Int]
+search ops = go . reverse
+  where
+    go (x:xs@(_:_)) = ops >>= (`map` go xs) . ($ x)
+    go xs = xs
 
 -- integer concatenation
 (~) :: Int -> Int -> Int
 x ~ y = head [n*x+y | n <- offsets, n > y]
   where offsets = 10 : fmap (10 *) offsets
 
--- note the identical middle and right branches, this is logically a binary tree
-solve1 input = show $ sum [y | (y, x:xs) <- equations, anyLeaf (==y) (tree x xs)]
+solve1 :: Solver
+solve1 input = show $ sum [y | (y, xs) <- equations, y `elem` tree xs]
   where
     equations = mustParse (linesOf equation) input
-    tree x []     = Leaf x
-    tree x (y:ys) = Tree x (tree (x+y) ys) (tree (x*y) ys) (tree (x*y) ys)
+    tree = search [(+), (*)]
 
--- this soln differs only in structure, the right branch is now for concatenation
-solve2 input = show $ sum [y | (y, x:xs) <- equations, anyLeaf (==y) (tree x xs)]
+solve2 :: Solver
+solve2 input = show $ sum [y | (y, xs) <- equations, y `elem` tree xs]
   where
     equations = mustParse (linesOf equation) input
-    tree x []     = Leaf x
-    tree x (y:ys) = Tree x (tree (x+y) ys) (tree (x*y) ys) (tree (x~y) ys)
+    tree = search [(+), (*), flip (~)]
 
 main :: IO ()
 main = runCLI solve1 solve2
