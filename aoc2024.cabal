@@ -94,6 +94,7 @@ executable day11
     main-is:              Day11.hs
     other-modules:        PressXToParse, PressXToSolve
     build-depends:        base
+                        , containers
                         , parsec
 
 executable day12
