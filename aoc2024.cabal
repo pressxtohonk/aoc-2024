@@ -95,6 +95,7 @@ executable day11
     other-modules:        PressXToParse, PressXToSolve
     build-depends:        base
                         , containers
+                        , mtl
                         , parsec
 
 executable day12
