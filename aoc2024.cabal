@@ -101,8 +101,11 @@ executable day11
 executable day12
     hs-source-dirs:       src
     main-is:              Day12.hs
-    other-modules:        PressXToParse, PressXToSolve
+    other-modules:        PressXToGrids, PressXToParse, PressXToSolve
+    default-extensions:   TupleSections
     build-depends:        base
+                        , containers
+                        , mtl
                         , parsec
 
 executable day13
