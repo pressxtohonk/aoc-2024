@@ -63,11 +63,47 @@ minToWin (Game a b prize) = go 100 0 Nothing
         value = a' <> b'
         cost = Just (3 * na + nb)
 
+type Mat = Pair Vec
+type Vec = Pair Int
+
+mmul :: Mat -> Vec -> Vec
+mmul m@((m11, m12), (m21, m22)) a@(a1, a2) =
+  (m11 * a1 + m12 * a2, m21 * a1 + m22 * a2)
+
+inv2x2 :: Mat -> Mat
+inv2x2 ((a, b), (c, d)) = ((d, -b), (-c, a))
+
+invDenom :: Mat -> Int
+invDenom ((a, b), (c, d)) = a * d - b * c
+
+-- try solve : x | M.x = a , int x
+intSoln :: Mat -> Vec -> Maybe Vec
+intSoln m@((m11, m12), (m21, m22)) a@(a1, a2)
+  | isIntSoln = Just (na, nb)
+  | otherwise = Nothing
+  where
+    -- invert the matrix
+    m' = inv2x2 m -- inverse without determinant scaling
+    d = invDenom m -- determinant scaling factor
+    -- solve for x.D
+    (na', nb') = mmul m' a
+    -- check integer constraints
+    (na, ra) = divMod na' d
+    (nb, rb) = divMod nb' d
+    isIntSoln = (ra == 0) && (rb == 0)
+
+-- lin alg hack, assumes systems of eqns have exactly 1 soln
+minToWin' :: Game -> Maybe Int
+minToWin' (Game (XY (a, c)) (XY (b, d)) (XY (x, y))) = do
+  let big = 10000000000000
+  (na, nb) <- intSoln ((a, b), (c, d)) (big+x, big+y)
+  return (3 * na + nb)
+
 solve1 :: Solver
 solve1 = show . sum . mapMaybe minToWin . mustParse (clawMachine `sepEndBy` eol)
 
 solve2 :: Solver
-solve2 = show
+solve2 = show . sum . mapMaybe minToWin' . mustParse (clawMachine `sepEndBy` eol)
 
 main :: IO ()
 main = runCLI solve1 solve2
