@@ -10,6 +10,8 @@ import PressXToParse
 import PressXToSolve (Solver, runCLI)
 import Text.Parsec
 
+type B = Board ()
+
 -- input parsing
 antennaP :: Parser (Int, Int, Char)
 antennaP = withCoord alphaNum
@@ -19,12 +21,12 @@ antennasP = do
   coords <- many (try antennaP)
   return $ Map.fromListWith (++) [(k, [(r, c)]) | (r, c, k) <- coords]
 
-boardP :: Parser Board
+boardP :: Parser B
 boardP = do
   grid <- Grid.fromLists <$> block
   let nrow = Grid.nrow grid
   let ncol = Grid.ncol grid
-  return $ Board nrow ncol Set.empty
+  return $ Board nrow ncol Map.empty
 
 extrapolate :: Pos -> Pos -> Pos
 extrapolate (r, c) (r', c') = (r' + r' - r, c' + c' - c)
@@ -40,7 +42,7 @@ formsLine pos nodes = any check nodes
 isAntiNode :: Map Char [Pos] -> Pos -> Bool
 isAntiNode antennas pos = Map.foldrWithKey (\k nodes acc -> formsLine pos nodes || acc) False antennas
 
-allLines :: Board -> [Pos] -> [Pos]
+allLines :: B-> [Pos] -> [Pos]
 allLines board nodes = do
   i <- nodes
   j <- nodes
@@ -48,7 +50,7 @@ allLines board nodes = do
     then []
     else takeWhile (board `hasCell`) (lineFrom i j)
 
-antiNodes :: Board -> Map Char [Pos] -> [Pos]
+antiNodes :: B -> Map Char [Pos] -> [Pos]
 antiNodes board antennas = Map.foldrWithKey (\k nodes acc -> allLines board nodes ++ acc) [] antennas
 
 distinct :: (Ord a) => [a] -> [a]
@@ -60,7 +62,7 @@ solve1 input = show $ length [(r, c) | r <- [1 .. nrow], c <- [1 .. ncol], isAnt
     grid = Grid.fromLists $ mustParse block input
     nrow = Grid.nrow grid
     ncol = Grid.ncol grid
-    board = Board nrow ncol Set.empty
+    board = Board nrow ncol Map.empty
     antennas = mustParse antennasP input
 
 solve2 :: Solver
@@ -69,7 +71,7 @@ solve2 input = show . length . distinct $ antiNodes board antennas
     grid = Grid.fromLists $ mustParse block input
     nrow = Grid.nrow grid
     ncol = Grid.ncol grid
-    board = Board nrow ncol Set.empty
+    board = Board nrow ncol Map.empty
     antennas = mustParse antennasP input
 
 main :: IO ()

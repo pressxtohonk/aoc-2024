@@ -13,6 +13,8 @@ import qualified PressXToGrids as Grid
 import PressXToParse
 import PressXToSolve (Solver, runCLI)
 
+type B = Board ()
+
 -- Labels each grid cell with the number of differing neighbours
 numAdjDiff :: Eq a => [[a]] -> [[Int]]
 numAdjDiff grid = foldl add zeros diffs
@@ -68,16 +70,16 @@ adj (r, c) = [(r+1, c), (r-1, c), (r, c+1), (r, c-1)]
 numSides :: Grid Char -> Map Int Int
 numSides grid = Map.map numTurns boards
   where
-    boards :: Map Int Board
+    boards :: Map Int B
     boards = Map.map (Board 0 0) 
-           . Map.fromListWith Set.union
-           . map (\(pos, region) -> (region, Set.singleton pos))
+           . Map.fromListWith Map.union
+           . map (\(pos, region) -> (region, Map.singleton pos ()))
            $ Map.toList (regionMap grid)
 
-numTurns :: Board -> Int
+numTurns :: B -> Int
 numTurns board = go Set.empty moves
   where
-    moves = (, R) <$> Set.toList (Board.filled board)
+    moves = (, R) . fst <$> Map.toList (Board.filled board)
     go seen [] = 0
     go seen (x:xs) = case walk board x seen of
       Nothing -> go seen xs
@@ -85,7 +87,7 @@ numTurns board = go Set.empty moves
 
 type WalkState = StateT (Set Move) Maybe
 
-walk :: Board -> Move -> Set Move -> Maybe (Int, Set Move)
+walk :: B -> Move -> Set Move -> Maybe (Int, Set Move)
 walk board move@(pos, _) = runStateT (go move)
   where
     turnL = turn . turn . turn

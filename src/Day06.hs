@@ -11,11 +11,13 @@ import PressXToParse
 import PressXToSolve (Solver, runCLI)
 import Text.Parsec
 
+type B = Board ()
+
 -- optimized board traversal until next object or out of bounds
-jumpWith :: Board -> Move -> Move
+jumpWith :: B -> Move -> Move
 jumpWith board = jump
   where
-    objs = Set.toList (filled board)
+    objs = fst <$> Map.toList (filled board)
     byRow = Map.fromListWith (++) [(r, [c]) | (r, c) <- objs]
     byCol = Map.fromListWith (++) [(c, [r]) | (r, c) <- objs]
     get = Map.findWithDefault []
@@ -34,18 +36,18 @@ startP = coordOf (char '^')
 filledP :: Parser Pos
 filledP = coordOf (char '#')
 
-boardP :: Parser Board
+boardP :: Parser B
 boardP = do
   grid <- lookAhead block
   let nrow = Grid.nrow grid
   let ncol = Grid.ncol grid
-  filled <- Set.fromList <$> many (try filledP)
+  filled <- Map.fromList . flip zip (repeat ()) <$> many (try filledP)
   return $ Board nrow ncol filled
 
 -- given a board and a starting move, return a sequence of moves to exit the board if it exists
 data PathResult = InvalidState | CycleDetected | Path [Move] deriving (Show, Eq)
 
-exitPath :: Board -> Move -> PathResult
+exitPath :: B-> Move -> PathResult
 exitPath board = walkBoard Set.empty []
   where
     walkBoard :: Set Move -> [Move] -> Move -> PathResult
@@ -58,7 +60,7 @@ exitPath board = walkBoard Set.empty []
         (nextPos, _) = step move
         update = if board `filledAt` nextPos then turn else step
 
-exitPath' :: Board -> Move -> PathResult
+exitPath' :: B-> Move -> PathResult
 exitPath' board = walkBoard Set.empty []
   where
     walkBoard :: Set Move -> [Move] -> Move -> PathResult
@@ -96,7 +98,7 @@ solve2 input = show (length cyclic)
     board = mustParse boardP input
     path = unwrapPath $ exitPath board (start, U)
     -- Collect positions along the path that creates cycles when obstructed
-    pathWithout pos = exitPath' (board `fill` pos) (start, U)
+    pathWithout pos = exitPath' (fill board pos ()) (start, U)
     cyclic = distinct [pos | (pos, _) <- path, pathWithout pos == CycleDetected]
 
 main :: IO ()
