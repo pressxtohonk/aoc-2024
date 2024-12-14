@@ -68,5 +68,15 @@ solve2 = unlines
     nsteps = 10000
     history robots = [map (clip nrow ncol . extrapolate n) robots | n <- [1..nsteps]]
 
+-- Cool idea from r/adventofcode to use the metric from part 1 (:
+solve2' :: Solver
+solve2' input = show $ minBy dangerLevel [1..10000]
+  where
+    nrow = 103
+    ncol = 101
+    robots = mustParse (linesOf robot) input
+    dangerLevel t = quadrants nrow ncol . map (extrapolate t) $ robots
+    minBy f xs = snd $ minimum [(f x, x) | x <- xs]
+
 main :: IO ()
-main = runCLI solve1 solve2
+main = runCLI solve1 solve2'
