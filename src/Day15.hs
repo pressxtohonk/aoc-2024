@@ -11,6 +11,8 @@ import Data.Maybe (fromMaybe)
 data Block
   = Robot
   | Box
+  | BoxL
+  | BoxR
   | Wall
   | Empty
   deriving (Show, Eq)
@@ -32,6 +34,14 @@ blockP = anyOf
   , Empty <$ char '.'
   ]
 
+blockP' :: Parser [Block]
+blockP' = anyOf
+  [ [Robot, Empty] <$ char '@'
+  , [BoxL, BoxR] <$ char 'O'
+  , [Wall, Wall] <$ char '#'
+  , [Empty, Empty] <$ char '.'
+  ]
+
 puzzleP :: Parser (Board Block, [Dir])
 puzzleP = do
   sections <- blocks
@@ -39,6 +49,17 @@ puzzleP = do
     [boardTxt, movesTxt] -> return (board, moves)
       where
         cells = mustParse (many blockP) <$> boardTxt
+        moves = mustParse (many moveP) (concat movesTxt)
+        board = Board.fromLists cells
+    _ -> error $ "error parsing puzzle, expected 2 sections but got " ++ show (length sections)
+
+puzzleP' :: Parser (Board Block, [Dir])
+puzzleP' = do
+  sections <- blocks
+  case sections of
+    [boardTxt, movesTxt] -> return (board, moves)
+      where
+        cells = concat . mustParse (many blockP') <$> boardTxt
         moves = mustParse (many moveP) (concat movesTxt)
         board = Board.fromLists cells
     _ -> error $ "error parsing puzzle, expected 2 sections but got " ++ show (length sections)
@@ -72,7 +93,9 @@ solve1 input = show $ gpsCoordSum board'
     board' = foldr pushRobot board (reverse moves)
 
 solve2 :: Solver
-solve2 = show
+solve2 input = show (board, moves)
+  where
+    (board, moves) = mustParse puzzleP' input
 
 main :: IO ()
 main = runCLI solve1 solve2
