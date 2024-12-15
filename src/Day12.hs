@@ -6,7 +6,7 @@ import Data.Map (Map, (!))
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
-import PressXToBoard (Board(Board), Move, Dir(R), turn, step)
+import PressXToBoard (Board(Board), Move, Dir(R), turnL, turnR, step)
 import qualified PressXToBoard as Board
 import PressXToGrids (Grid, (?))
 import qualified PressXToGrids as Grid
@@ -90,9 +90,6 @@ type WalkState = StateT (Set Move) Maybe
 walk :: B -> Move -> Set Move -> Maybe (Int, Set Move)
 walk board move@(pos, _) = runStateT (go move)
   where
-    turnL = turn . turn . turn
-    turnR = turn
-
     inBounds = Board.filledAt board . fst
     leftWall = step . turnL
     onPath move = inBounds move && (not . inBounds . step . turnL $ move)

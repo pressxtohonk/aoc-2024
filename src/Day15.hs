@@ -84,10 +84,8 @@ nudge move@(pos, dir) board = case board ? pos of
   where
     -- returns a function that shoves a cell forward if nudging the next cell succeeds
     go move = fmap (shove move) . nudge (Board.step move)
-    turnL = Board.turn . Board.turn . Board.turn
-    turnR = Board.turn
-    stepL = turnR . Board.step . turnL
-    stepR = turnL . Board.step . turnR
+    stepL = Board.turnR . Board.step . Board.turnL
+    stepR = Board.turnL . Board.step . Board.turnR
 
 -- Moves the specified block one step forward and replaces it with `Empty`.
 shove :: Move -> Board Block -> Board Block

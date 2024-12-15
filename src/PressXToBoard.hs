@@ -16,11 +16,17 @@ pos = fst
 dir :: Move -> Dir
 dir = snd
 
-turn :: Move -> Move
-turn (pos, U) = (pos, R)
-turn (pos, R) = (pos, D)
-turn (pos, D) = (pos, L)
-turn (pos, L) = (pos, U)
+turnL :: Move -> Move
+turnL (pos, U) = (pos, L)
+turnL (pos, R) = (pos, U)
+turnL (pos, D) = (pos, R)
+turnL (pos, L) = (pos, D)
+
+turnR :: Move -> Move
+turnR (pos, U) = (pos, R)
+turnR (pos, R) = (pos, D)
+turnR (pos, D) = (pos, L)
+turnR (pos, L) = (pos, U)
 
 step :: Move -> Move
 step ((r, c), U) = ((r - 1, c), U)

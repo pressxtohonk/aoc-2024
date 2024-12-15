@@ -58,7 +58,7 @@ exitPath board = walkBoard Set.empty []
       | otherwise = walkBoard (Set.insert move moves) (move : path) (update move)
       where
         (nextPos, _) = step move
-        update = if board `filledAt` nextPos then turn else step
+        update = if board `filledAt` nextPos then turnR else step
 
 exitPath' :: B-> Move -> PathResult
 exitPath' board = walkBoard Set.empty []
@@ -72,7 +72,7 @@ exitPath' board = walkBoard Set.empty []
       where
         jump = jumpWith board
         (nextPos, _) = step move
-        update = if board `filledAt` nextPos then turn else jump
+        update = if board `filledAt` nextPos then turnR else jump
 
 unwrapPath :: PathResult -> [Move]
 unwrapPath res = case res of
