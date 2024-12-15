@@ -64,42 +64,42 @@ puzzleP' = do
         board = Board.fromLists cells
     _ -> error $ "error parsing puzzle, expected 2 sections but got " ++ show (length sections)
 
-push :: Move -> Board Block -> Maybe (Board Block)
-push move@(pos, dir) board = case board ? pos of
+-- Tries to move the specified block /and/ all other affected blocks forward
+-- Return Nothing if any wall is hit
+nudge :: Move -> Board Block -> Maybe (Board Block)
+nudge move@(pos, dir) board = case board ? pos of
   Just Wall -> Nothing
   Just Empty -> Just board
-  Just Robot -> update move Robot <$> push move' board
-  Just Box -> update move Box <$> push move' board
+  Just Robot -> Just board >>= go move
+  Just Box -> Just board >>= go move
   Just BoxL 
-    | dir == Board.U -> 
-        update move BoxL . update (stepR move) BoxR
-        <$> (push move' board >>= push (Board.step $ stepR move))
-    | dir == Board.D -> 
-        update move BoxL . update (stepL move) BoxR
-        <$> (push move' board >>= push (Board.step $ stepL move))
-    | otherwise -> update move BoxL <$> push move' board
+    | dir == Board.U -> Just board >>= go move >>= go (stepR move)
+    | dir == Board.D -> Just board >>= go move >>= go (stepL move)
+    | otherwise -> Just board >>= go move
   Just BoxR
-    | dir == Board.U -> 
-        update move BoxR . update (stepL move) BoxL
-        <$> (push (Board.step move) board >>= push (Board.step $ stepL move))
-    | dir == Board.D -> 
-        update move BoxR . update (stepR move) BoxL
-        <$> (push (Board.step move) board >>= push (Board.step $ stepR move))
-    | otherwise -> update move BoxR <$> push move' board
-  result -> error $ "push got unexpected grid result " ++ show result
+    | dir == Board.U -> Just board >>= go move >>= go (stepL move)
+    | dir == Board.D -> Just board >>= go move >>= go (stepR move)
+    | otherwise -> Just board >>= go move
+  result -> error $ "nudge got unexpected grid result " ++ show result
   where
-    move'@(pos', _) = Board.step move
-    update move block board = Board.fill (Board.fill board pos Empty) pos' block
-      where
-        (pos, _) = move
-        (pos', _) = Board.step move
+    -- returns a function that shoves a cell forward if nudging the next cell succeeds
+    go move = fmap (shove move) . nudge (Board.step move)
     turnL = Board.turn . Board.turn . Board.turn
     turnR = Board.turn
     stepL = turnR . Board.step . turnL
     stepR = turnL . Board.step . turnR
 
+-- Moves the specified block one step forward and replaces it with `Empty`.
+shove :: Move -> Board Block -> Board Block
+shove move@(pos, _) board = board2
+  where
+    block = board ! pos
+    (pos', _) = Board.step move
+    board1 = Board.fill board pos Empty
+    board2 = Board.fill board1 pos' block
+
 pushRobot :: Dir -> Board Block -> Board Block
-pushRobot dir board = fromMaybe board (push (pos, dir) board)
+pushRobot dir board = fromMaybe board (nudge (pos, dir) board)
   where
     pos = head . Map.keys $ Map.filter (==Robot) (Board.filled board)
 
