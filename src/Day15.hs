@@ -65,15 +65,38 @@ puzzleP' = do
     _ -> error $ "error parsing puzzle, expected 2 sections but got " ++ show (length sections)
 
 push :: Move -> Board Block -> Maybe (Board Block)
-push move@(pos, _) board = case board ? pos of
+push move@(pos, dir) board = case board ? pos of
   Just Wall -> Nothing
   Just Empty -> Just board
-  Just Robot -> update Robot <$> push move' board
-  Just Box -> update Box <$> push move' board
+  Just Robot -> update move Robot <$> push move' board
+  Just Box -> update move Box <$> push move' board
+  Just BoxL 
+    | dir == Board.U -> 
+        update move BoxL . update (stepR move) BoxR
+        <$> (push move' board >>= push (Board.step $ stepR move))
+    | dir == Board.D -> 
+        update move BoxL . update (stepL move) BoxR
+        <$> (push move' board >>= push (Board.step $ stepL move))
+    | otherwise -> update move BoxL <$> push move' board
+  Just BoxR
+    | dir == Board.U -> 
+        update move BoxR . update (stepL move) BoxL
+        <$> (push (Board.step move) board >>= push (Board.step $ stepL move))
+    | dir == Board.D -> 
+        update move BoxR . update (stepR move) BoxL
+        <$> (push (Board.step move) board >>= push (Board.step $ stepR move))
+    | otherwise -> update move BoxR <$> push move' board
   result -> error $ "push got unexpected grid result " ++ show result
   where
     move'@(pos', _) = Board.step move
-    update block board = Board.fill (Board.fill board pos Empty) pos' block
+    update move block board = Board.fill (Board.fill board pos Empty) pos' block
+      where
+        (pos, _) = move
+        (pos', _) = Board.step move
+    turnL = Board.turn . Board.turn . Board.turn
+    turnR = Board.turn
+    stepL = turnR . Board.step . turnL
+    stepR = turnL . Board.step . turnR
 
 pushRobot :: Dir -> Board Block -> Board Block
 pushRobot dir board = fromMaybe board (push (pos, dir) board)
@@ -84,6 +107,7 @@ gpsCoordSum :: Board Block -> Int
 gpsCoordSum = Map.foldrWithKey combine 0 . Board.filled
   where
     combine (r, c) Box acc = 100 * r + c + acc
+    combine (r, c) BoxL acc = 100 * r + c + acc
     combine _ _ acc = acc
 
 solve1 :: Solver
@@ -93,9 +117,10 @@ solve1 input = show $ gpsCoordSum board'
     board' = foldr pushRobot board (reverse moves)
 
 solve2 :: Solver
-solve2 input = show (board, moves)
+solve2 input = show $ gpsCoordSum board'
   where
     (board, moves) = mustParse puzzleP' input
+    board' = foldr pushRobot board (reverse moves)
 
 main :: IO ()
 main = runCLI solve1 solve2
