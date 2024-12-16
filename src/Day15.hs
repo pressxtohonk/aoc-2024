@@ -1,12 +1,12 @@
 module Main where
 
 import qualified Data.Map as Map
-import PressXToBoard (Board, Dir, Pos, Move, (!), (?))
+import Data.Maybe (fromMaybe)
+import PressXToBoard (Board, Dir, Move, (!), (?))
 import qualified PressXToBoard as Board
 import PressXToParse
 import PressXToSolve (Solver, runCLI)
 import Text.Parsec (char, many)
-import Data.Maybe (fromMaybe)
 
 data Block
   = Robot
@@ -17,30 +17,32 @@ data Block
   | Empty
   deriving (Show, Eq)
 
-
 moveP :: Parser Dir
-moveP = anyOf 
-  [ Board.U <$ char '^'
-  , Board.D <$ char 'v'
-  , Board.L <$ char '<'
-  , Board.R <$ char '>'
-  ]
+moveP =
+  anyOf
+    [ Board.U <$ char '^',
+      Board.D <$ char 'v',
+      Board.L <$ char '<',
+      Board.R <$ char '>'
+    ]
 
 blockP :: Parser Block
-blockP = anyOf
-  [ Robot <$ char '@'
-  , Box <$ char 'O'
-  , Wall <$ char '#'
-  , Empty <$ char '.'
-  ]
+blockP =
+  anyOf
+    [ Robot <$ char '@',
+      Box <$ char 'O',
+      Wall <$ char '#',
+      Empty <$ char '.'
+    ]
 
 blockP' :: Parser [Block]
-blockP' = anyOf
-  [ [Robot, Empty] <$ char '@'
-  , [BoxL, BoxR] <$ char 'O'
-  , [Wall, Wall] <$ char '#'
-  , [Empty, Empty] <$ char '.'
-  ]
+blockP' =
+  anyOf
+    [ [Robot, Empty] <$ char '@',
+      [BoxL, BoxR] <$ char 'O',
+      [Wall, Wall] <$ char '#',
+      [Empty, Empty] <$ char '.'
+    ]
 
 puzzleP :: Parser (Board Block, [Dir])
 puzzleP = do
@@ -72,7 +74,7 @@ nudge move@(pos, dir) board = case board ? pos of
   Just Empty -> Just board
   Just Robot -> Just board >>= go move
   Just Box -> Just board >>= go move
-  Just BoxL 
+  Just BoxL
     | dir == Board.U -> Just board >>= go move >>= go (stepR move)
     | dir == Board.D -> Just board >>= go move >>= go (stepL move)
     | otherwise -> Just board >>= go move
@@ -99,7 +101,7 @@ shove move@(pos, _) board = board2
 pushRobot :: Dir -> Board Block -> Board Block
 pushRobot dir board = fromMaybe board (nudge (pos, dir) board)
   where
-    pos = head . Map.keys $ Map.filter (==Robot) (Board.filled board)
+    pos = head . Map.keys $ Map.filter (== Robot) (Board.filled board)
 
 gpsCoordSum :: Board Block -> Int
 gpsCoordSum = Map.foldrWithKey combine 0 . Board.filled
