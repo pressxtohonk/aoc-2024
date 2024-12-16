@@ -134,6 +134,7 @@ executable day15
 executable day16
     hs-source-dirs:       src
     main-is:              Day16.hs
+    default-extensions:   TupleSections
     other-modules:        PressXToBoard, PressXToParse, PressXToSolve
     build-depends:        base
                         , containers
