@@ -143,8 +143,10 @@ executable day16
 executable day17
     hs-source-dirs:       src
     main-is:              Day17.hs
+    default-extensions:   BinaryLiterals
     other-modules:        PressXToParse, PressXToSolve
     build-depends:        base
+                        , mtl
                         , parsec
 
 executable day18
