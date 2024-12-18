@@ -1,7 +1,10 @@
 module PressXToBoard where
 
 import Control.Applicative (asum)
+import Control.Monad.State
 import qualified Data.Map as Map
+import qualified Data.Set as Set
+import qualified Data.Tree as Tree
 
 type Move = (Pos, Dir)
 
@@ -88,6 +91,8 @@ fill board pos key = board {filled = Map.insert pos key (filled board)}
 peers :: Board a -> Pos -> [Pos]
 peers board pos = filter (board `canFill`) (adj pos)
 
+-- Move based pathfinding
+
 data WalkResult
   = Completed [Move]
   | CycleError [Move]
@@ -119,3 +124,41 @@ searchFor next done = search
           | move `elem` path = Nothing
           | null (board ? pos move) = Nothing
           | otherwise = asum (go (move : path) <$> next move)
+
+-- Position based pathfinding
+
+type PosPath = [Pos]
+
+type PosState = State (Set.Set Pos)
+
+-- Monadic action to branch out from a board position to unvisited adjacent positions
+explore :: Board () -> PosPath -> PosState (PosPath, [PosPath])
+explore board path = case path of
+  (pos : _) -> do
+    seen <- get
+    let conditions = [(`Set.notMember` seen), (board `hasCell`), (board `emptyAt`)]
+        allPeers = peers board pos
+        newPeers = foldr filter allPeers conditions
+        visited = pos : newPeers
+    put (foldr Set.insert seen visited)
+    return (path, [peer : path | peer <- newPeers])
+  _ -> return ([], [])
+
+-- Builds a tree where level `n` contains all non-overlapping paths at BFS depth `n
+-- Runs in O(V) as each node is only visited once
+-- FIXME: Collect more information to allow for discovering multiple shortest paths.
+bfsTree :: Board () -> Pos -> Tree.Tree PosPath
+bfsTree board pos = evalState (Tree.unfoldTreeM_BF (explore board) [pos]) Set.empty
+
+-- Given a board, source position and target position, returns all shortest paths.
+-- NOTE: If multiple paths exist with the min length, only returns the first 
+shortestPath :: Board () -> Pos -> Pos -> [PosPath]
+shortestPath board start target = search [bfsTree board start]
+  where
+    isSoln = (target==) . head
+    search [] = []
+    search forest
+      | null soln = search (forest >>= Tree.subForest)
+      | otherwise = soln
+      where
+        soln = [path | Tree.Node path _ <- forest, isSoln path]
