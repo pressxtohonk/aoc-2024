@@ -1,13 +1,15 @@
 module Main where
 
 import Control.Applicative (asum)
+import Control.Monad (when)
+import Control.Monad.RWS
 import Control.Monad.State
 import Data.Bits
-import Data.List (intercalate)
+import Data.List (intercalate, isPrefixOf)
 import Data.Maybe (fromJust)
 import PressXToParse
 import PressXToSolve (Solver, runCLI)
-import Text.Parsec (char, eof, lookAhead, many, optional, sepBy, string, try)
+import Text.Parsec (anyChar, char, eof, lookAhead, many, newline, optional, sepBy, string, try)
 
 data Operand
   = Lit Int
@@ -143,13 +145,13 @@ format :: [Int] -> String
 format = intercalate "," . map show . reverse
 
 findSeed :: (Int -> Int) -> [Int] -> Maybe Int
-findSeed next output = asum (go output' 0 <$> [1..7])
+findSeed next output = asum (go output' 0 <$> [1 .. 7])
   where
     output' = reverse output
     go :: [Int] -> Int -> Int -> Maybe Int
     go [] acc _ = Just acc
-    go (x:xs) acc n
-      | next acc' == x = asum (go xs acc' <$> [0..7])
+    go (x : xs) acc n
+      | next acc' == x = asum (go xs acc' <$> [0 .. 7])
       | otherwise = Nothing
       where
         acc' = 8 * acc + n
@@ -161,7 +163,7 @@ nextOutput prog a0 = head $ execState s []
     s = foldl (>>=) (return comp) (runInstruction <$> prog)
 
 alternate :: [a] -> [a]
-alternate (x:_:xs) = x : alternate xs
+alternate (x : _ : xs) = x : alternate xs
 alternate xs = xs
 
 solve1 :: Solver
@@ -178,4 +180,66 @@ solve2 input = show $ fromJust (seed target)
     target = mustParse (block >> eol >> opCodes) input
 
 main :: IO ()
-main = runCLI solve1 solve2
+main = runCLI solve1' solve2'
+
+debugP :: Parser (Computer, [Int])
+debugP = do
+  ra <- string "Register A: " *> int <* eol
+  rb <- string "Register B: " *> int <* eol
+  rc <- string "Register C: " *> int <* eol
+  newline
+  opCodes <- string "Program: " *> int `sepBy` char ',' <* end
+  return (Computer 0 ra rb rc, opCodes)
+
+type Debugger = RWS [Int] [Int] Computer
+
+step :: Debugger ()
+step = do
+  comp@(Computer i ra rb rc) <- get
+  let combo 4 = ra
+      combo 5 = rb
+      combo 6 = rc
+      combo x = x
+  prog <- ask
+  case (prog !! i, prog !! (i + 1)) of
+    (0, op) -> put comp {p = i + 2, a = ra `shiftR` combo op}
+    (1, op) -> put comp {p = i + 2, b = rb `xor` op}
+    (2, op) -> put comp {p = i + 2, b = combo op `mod` 8}
+    (3, op)
+      | ra == 0 -> put comp {p = i + 2}
+      | otherwise -> put comp {p = op}
+    (4, op) -> put comp {p = i + 2, b = rb `xor` rc}
+    (5, op) -> put comp {p = i + 2} >> tell [combo op `mod` 8]
+    (6, op) -> put comp {p = i + 2, b = ra `shiftR` combo op}
+    (7, op) -> put comp {p = i + 2, c = ra `shiftR` combo op}
+
+runAll :: Debugger ()
+runAll = do
+  i <- gets p
+  prog <- ask
+  when (i < length prog) (step >> runAll)
+
+solve1' :: Solver
+solve1' input = intercalate "," (map show output)
+  where
+    (comp, prog) = mustParse debugP input
+    (comp', output) = execRWS runAll prog comp
+
+getSeeds :: [Int] -> [Int] -> [Int]
+getSeeds prog target = filter verified (foldl go [0] (reverse target))
+  where
+    go nums n = do
+      x <- nums
+      dx <- [0 .. 7]
+      let y = 8 * x + dx
+      case outputs y of
+        n' : _ | n' == n -> return y
+        _ -> []
+    outputs x = snd $ execRWS runAll prog (Computer 0 x 0 0)
+    verified x = outputs x == target
+
+solve2' :: Solver
+solve2' input = show $ minimum (quineSeeds prog)
+  where
+    (_, prog) = mustParse debugP input
+    quineSeeds x = getSeeds x x
