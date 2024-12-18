@@ -54,6 +54,7 @@ executable day06
     other-modules:        PressXToBoard, PressXToGrids, PressXToParse, PressXToSolve
     build-depends:        base
                         , containers
+                        , mtl
                         , parsec
 
 executable day07
@@ -69,6 +70,7 @@ executable day08
     other-modules:        PressXToBoard, PressXToGrids, PressXToParse, PressXToSolve
     build-depends:        base
                         , containers
+                        , mtl
                         , parsec
 
 executable day09
@@ -138,6 +140,7 @@ executable day16
     other-modules:        PressXToBoard, PressXToParse, PressXToSolve
     build-depends:        base
                         , containers
+                        , mtl
                         , parsec
 
 executable day17
