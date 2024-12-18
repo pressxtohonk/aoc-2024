@@ -5,8 +5,8 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
-import qualified PressXToGrids as Grid
 import PressXToBoard
+import qualified PressXToGrids as Grid
 import PressXToParse
 import PressXToSolve (Solver, runCLI)
 import Text.Parsec
@@ -21,20 +21,24 @@ jumpWith board = jump
     byRow = Map.fromListWith (++) [(r, [c]) | (r, c) <- objs]
     byCol = Map.fromListWith (++) [(c, [r]) | (r, c) <- objs]
     get = Map.findWithDefault []
-    m = nrow board + 1 -- first out of bounds row
-    n = ncol board + 1 -- first out of bounds col
+    m = nrow board -- first out of bounds row
+    n = ncol board -- first out of bounds col
     jump (pos, dir) = (jump' dir pos, dir)
-    jump' U (r, c) = foldl max (0, c) [(r'+1, c) | r' <- get c byCol, r' < r]
-    jump' D (r, c) = foldl min (m, c) [(r'-1, c) | r' <- get c byCol, r < r']
-    jump' L (r, c) = foldl max (r, 0) [(r, c'+1) | c' <- get r byRow, c' < c]
-    jump' R (r, c) = foldl min (r, n) [(r, c'-1) | c' <- get r byRow, c < c']
+    jump' U (r, c) = foldl max (-1, c) [(r' + 1, c) | r' <- get c byCol, r' < r]
+    jump' D (r, c) = foldl min (m, c) [(r' - 1, c) | r' <- get c byCol, r < r']
+    jump' L (r, c) = foldl max (r, -1) [(r, c' + 1) | c' <- get r byRow, c' < c]
+    jump' R (r, c) = foldl min (r, n) [(r, c' - 1) | c' <- get r byRow, c < c']
 
 -- Parsers
 startP :: Parser Pos
-startP = coordOf (char '^')
+startP = do
+  (r, c) <- coordOf (char '^')
+  return (r - 1, c - 1)
 
 filledP :: Parser Pos
-filledP = coordOf (char '#')
+filledP = do
+  (r, c) <- coordOf (char '#')
+  return (r - 1, c - 1)
 
 boardP :: Parser B
 boardP = do
@@ -47,7 +51,7 @@ boardP = do
 -- given a board and a starting move, return a sequence of moves to exit the board if it exists
 data PathResult = InvalidState | CycleDetected | Path [Move] deriving (Show, Eq)
 
-exitPath :: B-> Move -> PathResult
+exitPath :: B -> Move -> PathResult
 exitPath board = walkBoard Set.empty []
   where
     walkBoard :: Set Move -> [Move] -> Move -> PathResult
@@ -60,7 +64,7 @@ exitPath board = walkBoard Set.empty []
         (nextPos, _) = step move
         update = if board `filledAt` nextPos then turnR else step
 
-exitPath' :: B-> Move -> PathResult
+exitPath' :: B -> Move -> PathResult
 exitPath' board = walkBoard Set.empty []
   where
     walkBoard :: Set Move -> [Move] -> Move -> PathResult
@@ -76,8 +80,8 @@ exitPath' board = walkBoard Set.empty []
 
 unwrapPath :: PathResult -> [Move]
 unwrapPath res = case res of
-    Path path -> path
-    pathError -> error $ show pathError
+  Path path -> path
+  pathError -> error $ show pathError
 
 distinct :: (Ord a) => [a] -> [a]
 distinct = Set.toList . Set.fromList

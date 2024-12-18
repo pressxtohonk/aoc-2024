@@ -4,8 +4,8 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
-import qualified PressXToGrids as Grid
 import PressXToBoard
+import qualified PressXToGrids as Grid
 import PressXToParse
 import PressXToSolve (Solver, runCLI)
 import Text.Parsec
@@ -14,7 +14,9 @@ type B = Board ()
 
 -- input parsing
 antennaP :: Parser (Int, Int, Char)
-antennaP = withCoord alphaNum
+antennaP = do
+  (r, c, x) <- withCoord alphaNum
+  return (r - 1, c - 1, x)
 
 antennasP :: Parser (Map Char [Pair Int])
 antennasP = do
@@ -42,7 +44,7 @@ formsLine pos nodes = any check nodes
 isAntiNode :: Map Char [Pos] -> Pos -> Bool
 isAntiNode antennas pos = Map.foldrWithKey (\k nodes acc -> formsLine pos nodes || acc) False antennas
 
-allLines :: B-> [Pos] -> [Pos]
+allLines :: B -> [Pos] -> [Pos]
 allLines board nodes = do
   i <- nodes
   j <- nodes
@@ -51,13 +53,13 @@ allLines board nodes = do
     else takeWhile (board `hasCell`) (lineFrom i j)
 
 antiNodes :: B -> Map Char [Pos] -> [Pos]
-antiNodes board antennas = Map.foldrWithKey (\k nodes acc -> allLines board nodes ++ acc) [] antennas
+antiNodes board = Map.foldrWithKey (\k nodes acc -> allLines board nodes ++ acc) []
 
 distinct :: (Ord a) => [a] -> [a]
 distinct = Set.toList . Set.fromList
 
 solve1 :: Solver
-solve1 input = show $ length [(r, c) | r <- [1 .. nrow], c <- [1 .. ncol], isAntiNode antennas (r, c)]
+solve1 input = show $ length [(r, c) | r <- [0 .. nrow - 1], c <- [0 .. ncol - 1], isAntiNode antennas (r, c)]
   where
     grid = Grid.fromLists $ mustParse block input
     nrow = Grid.nrow grid
