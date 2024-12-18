@@ -129,36 +129,53 @@ searchFor next done = search
 
 type PosPath = [Pos]
 
-type PosState = State (Set.Set Pos)
-
--- Monadic action to branch out from a board position to unvisited adjacent positions
-explore :: Board () -> PosPath -> PosState (PosPath, [PosPath])
-explore board path = case path of
-  (pos : _) -> do
-    seen <- get
-    let conditions = [(`Set.notMember` seen), (board `hasCell`), (board `emptyAt`)]
-        allPeers = peers board pos
-        newPeers = foldr filter allPeers conditions
-        visited = pos : newPeers
-    put (foldr Set.insert seen visited)
-    return (path, [peer : path | peer <- newPeers])
-  _ -> return ([], [])
+type BackTrack = Map.Map Pos [(Int, Pos)]
 
 -- Builds a tree where level `n` contains all non-overlapping paths at BFS depth `n
 -- Runs in O(V) as each node is only visited once
--- FIXME: Collect more information to allow for discovering multiple shortest paths.
-bfsTree :: Board () -> Pos -> Tree.Tree PosPath
-bfsTree board pos = evalState (Tree.unfoldTreeM_BF (explore board) [pos]) Set.empty
-
--- Given a board, source position and target position, returns all shortest paths.
--- NOTE: If multiple paths exist with the min length, only returns the first 
-shortestPath :: Board () -> Pos -> Pos -> [PosPath]
-shortestPath board start target = search [bfsTree board start]
+explore :: Board () -> Pos -> (Tree.Tree PosPath, BackTrack)
+explore board pos = runState build state
   where
-    isSoln = (target==) . head
+    build = Tree.unfoldTreeM_BF expand [pos]
+    state = Map.singleton pos []
+    -- Monadic action to branch out from a board position to unvisited adjacent positions
+    expand :: PosPath -> State BackTrack (PosPath, [PosPath])
+    expand [] = return ([], [])
+    expand path@(pos : _) = do
+      prev <- get
+      let allPeers = peers board pos
+          newPeers = filter (`Map.notMember` prev) allPeers
+          update peer = Map.insertWith (++) peer [(length path, pos)]
+      put (foldr update prev allPeers)
+      return (path, [peer : path | peer <- newPeers])
+
+-- Given a board, source position and target position, returns the first shortest path.
+shortestPath :: Board () -> Pos -> Pos -> [PosPath]
+shortestPath board start target = search [tree]
+  where
+    (tree, _) = explore board start
+    isSoln = (target ==) . head
     search [] = []
     search forest
       | null soln = search (forest >>= Tree.subForest)
       | otherwise = soln
       where
         soln = [path | Tree.Node path _ <- forest, isSoln path]
+
+-- Given a board, source position and target position, returns all shortest paths.
+shortestPaths :: Board () -> Pos -> Pos -> [PosPath]
+shortestPaths board start = go [[]]
+  where
+    (_, prev) = explore board start
+    go :: [PosPath] -> Pos -> [PosPath]
+    go acc pos
+      | pos == start = acc'
+      | otherwise = case Map.lookup pos prev of
+          Just [] -> acc'
+          Just xs -> concatMap (go acc') (next xs)
+          _ -> []
+      where
+        acc' = map (pos :) acc
+        next xs =
+          let minCost = minimum (fst <$> xs)
+           in [pos | (cost, pos) <- xs, cost == minCost]
