@@ -167,6 +167,7 @@ executable day19
     main-is:              Day19.hs
     other-modules:        PressXToParse, PressXToSolve
     build-depends:        base
+                        , containers
                         , parsec
 
 executable day20
