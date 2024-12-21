@@ -114,6 +114,9 @@ dirPad = Board.Board nrow ncol (Map.filter (/= D_) cells)
           [DL, DD, DR]
         ]
 
+dists :: [DistMat DirPad]
+dists = distUniform dirPad : map (`distWith` dirPad) dists
+
 d1 :: DistMat DirPad
 d1 = distUniform dirPad -- One directional keypad that you are using
 
@@ -148,13 +151,20 @@ asNumeric = read . concatMap show'
 complexity :: [NumPad] -> Int
 complexity code = minLenWith d4 NA code * asNumeric code
 
+complexity' :: [NumPad] -> Int
+complexity' code = minLenWith dist NA code * asNumeric code
+  where
+    dist = distWith (dists !! 25) numPad
+
 solve1 :: Solver
 solve1 input = show $ sum (complexity <$> codes)
   where
     codes = mustParse (linesOf (many1 numPadP)) input
 
 solve2 :: Solver
-solve2 = show
+solve2 input = show $ sum (complexity' <$> codes)
+  where
+    codes = mustParse (linesOf (many1 numPadP)) input
 
 main :: IO ()
 main = runCLI solve1 solve2
