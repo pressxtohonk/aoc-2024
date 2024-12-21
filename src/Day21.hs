@@ -56,12 +56,12 @@ step newDir (lastPos, lastDir) = case newDir of
 type DistMat a = Map.Map (Pair a) Int
 
 -- As a human, each dirpad transition only takes one move
--- Robots move step by step and have non-uniform transitions
 distUniform :: (Ord a) => Board.Board a -> DistMat a
 distUniform board = Map.fromList $ (,1) <$> ((,) <$> dirs <*> dirs)
   where
     dirs = Map.elems (Board.filled board)
 
+-- Robots move step by step and have non-uniform transitions
 distWith :: (Ord a) => DistMat DirPad -> Board.Board a -> DistMat a
 distWith cost board = Map.fromList transitions
   where
@@ -114,20 +114,18 @@ dirPad = Board.Board nrow ncol (Map.filter (/= D_) cells)
           [DL, DD, DR]
         ]
 
-dists :: [DistMat DirPad]
-dists = distUniform dirPad : map (`distWith` dirPad) dists
+d0 :: DistMat DirPad
+d0 = distUniform dirPad -- One directional keypad that you are using
 
 d1 :: DistMat DirPad
-d1 = distUniform dirPad -- One directional keypad that you are using
+d1 = distWith d0 dirPad -- 1/2 directional keypads that robots are using
 
 d2 :: DistMat DirPad
-d2 = distWith d1 dirPad -- 1/2 directional keypads that robots are using
+d2 = distWith d1 dirPad -- 2/2 directional keypads that robots are using
 
-d3 :: DistMat DirPad
-d3 = distWith d2 dirPad -- 2/2 directional keypads that robots are using
-
-d4 :: DistMat NumPad
-d4 = distWith d3 numPad -- One numeric keypad (on a door) that a robot is using
+-- Generalizes the above pattern into an infinite list
+dists :: [DistMat DirPad]
+dists = d0 : [distWith di dirPad | di <- dists]
 
 minLenWith :: (Ord a) => DistMat a -> a -> [a] -> Int
 minLenWith dist start steps =
@@ -148,23 +146,28 @@ asNumeric = read . concatMap show'
     show' N9 = "9"
     show' _ = ""
 
-complexity :: [NumPad] -> Int
-complexity code = minLenWith d4 NA code * asNumeric code
-
-complexity' :: [NumPad] -> Int
-complexity' code = minLenWith dist NA code * asNumeric code
-  where
-    dist = distWith (dists !! 25) numPad
-
 solve1 :: Solver
 solve1 input = show $ sum (complexity <$> codes)
   where
     codes = mustParse (linesOf (many1 numPadP)) input
 
+    -- cost of pushing the numpad with 2 robots
+    cost :: DistMat NumPad
+    cost = distWith d2 numPad
+
+    complexity :: [NumPad] -> Int
+    complexity code = minLenWith cost NA code * asNumeric code
+
 solve2 :: Solver
-solve2 input = show $ sum (complexity' <$> codes)
+solve2 input = show $ sum (complexity <$> codes)
   where
     codes = mustParse (linesOf (many1 numPadP)) input
+
+    cost :: DistMat NumPad
+    cost = distWith (dists !! 25) numPad
+
+    complexity :: [NumPad] -> Int
+    complexity code = minLenWith cost NA code * asNumeric code
 
 main :: IO ()
 main = runCLI solve1 solve2
