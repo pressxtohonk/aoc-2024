@@ -183,8 +183,11 @@ executable day20
 executable day21
     hs-source-dirs:       src
     main-is:              Day21.hs
-    other-modules:        PressXToParse, PressXToSolve
+    default-extensions:   TupleSections
+    other-modules:        PressXToAlgos, PressXToBoard, PressXToParse, PressXToSolve
     build-depends:        base
+                        , containers
+                        , mtl
                         , parsec
 
 executable day22
