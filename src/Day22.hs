@@ -33,10 +33,16 @@ getSignals = foldr update Map.empty . runsOf 5
     signal xs = zipWith (-) (tail xs) xs
 
 solve1 :: Solver
-solve1 = show . sum . map (\x -> rngFromSeed x !! 2000) . mustParse (linesOf int)
+solve1 = show
+       . sum
+       . map (\x -> rngFromSeed x !! 2000)
+       . mustParse (linesOf int)
 
 solve2 :: Solver
-solve2 = show . maximum . Map.unionsWith (+) . map (getSignals . take 2001 . pricesFromSeed) . mustParse (linesOf int)
+solve2 = show 
+       . maximum . Map.unionsWith (+)
+       . map (getSignals . take 2001 . pricesFromSeed)
+       . mustParse (linesOf int)
 
 main :: IO ()
 main = runCLI solve1 solve2
