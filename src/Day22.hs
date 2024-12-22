@@ -2,6 +2,7 @@ module Main where
 
 import Data.Bits
 import Data.List (tails)
+import qualified Data.Map as Map
 import PressXToParse
 import PressXToSolve (Solver, runCLI)
 
@@ -21,14 +22,21 @@ prune = (`mod` 16777216)
 rngFromSeed :: Int -> [Int]
 rngFromSeed = iterate evolve
 
-signal :: [Int] -> [Int]
-signal xs = zipWith (-) (tail xs) xs
+pricesFromSeed :: Int -> [Int]
+pricesFromSeed = map (`mod` 10) . rngFromSeed
+
+getSignals :: [Int] -> Map.Map [Int] Int
+getSignals = foldr update Map.empty . runsOf 5
+  where
+    runsOf n = filter ((==n) . length) . map (take n) . tails
+    update xs = Map.insert (signal xs) (last xs)
+    signal xs = zipWith (-) (tail xs) xs
 
 solve1 :: Solver
 solve1 = show . sum . map (\x -> rngFromSeed x !! 2000) . mustParse (linesOf int)
 
 solve2 :: Solver
-solve2 = show
+solve2 = show . maximum . Map.unionsWith (+) . map (getSignals . take 2001 . pricesFromSeed) . mustParse (linesOf int)
 
 main :: IO ()
 main = runCLI solve1 solve2
