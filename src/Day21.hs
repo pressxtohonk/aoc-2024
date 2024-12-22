@@ -75,24 +75,18 @@ distWith cost board = Map.fromList transitions
       | otherwise = fst . last . head $ shortestPaths cost board i j
 
 shortestPaths :: (Ord a) => DistMat DirPad -> Board.Board a -> Board.Pos -> Board.Pos -> [[(Int, State)]]
-shortestPaths cost board i j = dijkstra done next start
+shortestPaths cost board i j = dijkstra next 0 (i, DA) (==(j, DA))
   where
-    start :: State
-    start = (i, DA)
-
-    next :: State -> [(Int, State)]
-    next state@(_, lastDir) =
+    next :: Int -> State -> [(Int, State)]
+    next lastCost state@(_, lastDir) =
       filter
         (\(_, (pos, _)) -> Board.filledAt board pos)
-        [ (cost ! (lastDir, DU), step DU state),
-          (cost ! (lastDir, DD), step DD state),
-          (cost ! (lastDir, DL), step DL state),
-          (cost ! (lastDir, DR), step DR state),
-          (cost ! (lastDir, DA), step DA state)
+        [ (lastCost + cost ! (lastDir, DU), step DU state),
+          (lastCost + cost ! (lastDir, DD), step DD state),
+          (lastCost + cost ! (lastDir, DL), step DL state),
+          (lastCost + cost ! (lastDir, DR), step DR state),
+          (lastCost + cost ! (lastDir, DA), step DA state)
         ]
-
-    done :: State -> Bool
-    done = (== (j, DA))
 
 numPad :: Board.Board NumPad
 numPad = Board.Board nrow ncol (Map.filter (/= N_) cells)
