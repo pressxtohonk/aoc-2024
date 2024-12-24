@@ -212,6 +212,7 @@ executable day24
     main-is:              Day24.hs
     other-modules:        PressXToParse, PressXToSolve
     build-depends:        base
+                        , containers
                         , parsec
 
 executable day25
