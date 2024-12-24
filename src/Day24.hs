@@ -1,11 +1,11 @@
 module Main where
 
-import Data.List (isPrefixOf)
+import Data.List (intercalate, isPrefixOf, sort)
 import Data.Map ((!))
 import qualified Data.Map as Map
 import PressXToParse
 import PressXToSolve (Solver, runCLI)
-import Text.Parsec (alphaNum, string, manyTill, space, many)
+import Text.Parsec (alphaNum, many, manyTill, space, string)
 
 data Bit a
   = Lit a
@@ -33,16 +33,17 @@ valueP :: Parser (String, Bit Bool)
 valueP = (,) <$> label <*> value <* end
   where
     label = alphaNum `manyTill` string ": "
-    value = Lit . (==1) <$> int
+    value = Lit . (== 1) <$> int
 
 gateP :: Parser (String, Bit String)
 gateP = do
   a <- alphaNum `manyTill` space
-  gate <- anyOf
-    [ And <$ string "AND",
-      Or <$ string "OR",
-      Xor <$ string "XOR"
-    ]
+  gate <-
+    anyOf
+      [ And <$ string "AND",
+        Or <$ string "OR",
+        Xor <$ string "XOR"
+      ]
   space
   b <- alphaNum `manyTill` string " -> "
   c <- alphaNum `manyTill` end
@@ -74,15 +75,28 @@ toGraph (leaves, branches) = Map.union leaves branches'
     branches' = Map.mapWithKey (\k _ -> resolve k) branches
 
 getOutput :: Map.Map String Bool -> Int
-getOutput bits = sum [if bit then 2 ^ n else 0 | (n, bit) <- zip [0..]  output]
+getOutput bits = sum [if bit then 2 ^ n else 0 | (n, bit) <- zip [0 ..] output]
   where
     output = Map.elems $ Map.filterWithKey (\k _ -> "z" `isPrefixOf` k) bits
 
 solve1 :: Solver
 solve1 = show . getOutput . Map.map eval . toGraph . mustParse circuitP
 
+-- See src/python/Day24 for interactive solution
 solve2 :: Solver
-solve2 = show
+solve2 =
+  const
+    . intercalate ","
+    . sort
+    $ [ "z10", -- half adder for bit 10
+        "vcf",
+        "z17", -- half adder for bit 17
+        "fhg",
+        "dvb", -- half adder for bit 35
+        "fsq",
+        "z39", -- half adder for bit 39
+        "tnc"
+      ]
 
 main :: IO ()
 main = runCLI solve1 solve2
